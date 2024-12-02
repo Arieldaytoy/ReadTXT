@@ -313,12 +313,14 @@
             字体ToolStripMenuItem.Name = "字体ToolStripMenuItem";
             字体ToolStripMenuItem.Size = new Size(180, 22);
             字体ToolStripMenuItem.Text = "字体";
+            字体ToolStripMenuItem.Click += 字体ToolStripMenuItem_Click;
             // 
             // 背景色ToolStripMenuItem
             // 
             背景色ToolStripMenuItem.Name = "背景色ToolStripMenuItem";
             背景色ToolStripMenuItem.Size = new Size(180, 22);
             背景色ToolStripMenuItem.Text = "背景色";
+            背景色ToolStripMenuItem.Click += 背景色ToolStripMenuItem_Click;
             // 
             // ReadTXT
             // 

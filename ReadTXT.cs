@@ -24,7 +24,7 @@ namespace ReadTXT
             public required string toolStripComboBox1Pattern { get; set; }
             public required string toolStripComboBox2Pattern { get; set; }
             public required string toolStripLabel6Pattern { get; set; }
-            
+
         }
         // 添加一个方法来读取JSON文件
         public class PatternsContainer
@@ -117,7 +117,7 @@ namespace ReadTXT
                         toolStripComboBox1Pattern = toolStripComboBox1.Text,
                         toolStripComboBox2Pattern = toolStripComboBox2.Text,
                         toolStripLabel6Pattern = toolStripLabel6.Text
-                        
+
                     }
                 }
             };
@@ -399,7 +399,7 @@ namespace ReadTXT
             int lineCount = richTextBox.Lines.Length;
             int i = int.Parse(this.toolStripLabel7.Text); // 将字符串转换为整数     
             int startIndex = richTextBox.GetFirstCharIndexFromLine(i);
-            int length;            
+            int length;
             if (i < lineCount - 1 && startIndex != -1)
             {
                 int nextIndex = richTextBox.GetFirstCharIndexFromLine(i + 1);
@@ -411,7 +411,7 @@ namespace ReadTXT
                 startIndex = 0;
                 length = richTextBox.Text.Length;// 获取当前行的长度（包括行尾的换行符）
 
-            }            
+            }
             this.toolStripLabel7.Text = i.ToString();
             richTextBox.Select(startIndex, length);
             string txt = richTextBox.SelectedText;
@@ -439,7 +439,18 @@ namespace ReadTXT
             }
         }
         //其他设置
-     
-       
+        private void 字体ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.fontDialog1.ShowDialog();
+
+        }
+
+        private void 背景色ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.colorDialog1=new ColorDialog();
+        }
+        
+
+
     }
 }
