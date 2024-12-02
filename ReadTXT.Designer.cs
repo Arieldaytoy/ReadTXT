@@ -54,23 +54,28 @@
             toolStripLabel3 = new ToolStripLabel();
             toolStripButton1 = new ToolStripButton();
             toolStripButton2 = new ToolStripButton();
-            toolStripSeparator1 = new ToolStripSeparator();
             toolStripButton3 = new ToolStripButton();
-            toolStripLabel4 = new ToolStripLabel();
-            toolStripLabel5 = new ToolStripLabel();
+            toolStripSeparator1 = new ToolStripSeparator();
+            toolStripButton4 = new ToolStripButton();
             toolStripSeparator2 = new ToolStripSeparator();
-            toolStripLabel6 = new ToolStripLabel();
-            toolStripLabel7 = new ToolStripLabel();
             fontDialog1 = new FontDialog();
             colorDialog1 = new ColorDialog();
+            statusStrip1 = new StatusStrip();
+            toolStripStatusLabel1 = new ToolStripStatusLabel();
+            toolStripStatusLabel2 = new ToolStripStatusLabel();
+            toolStripStatusLabel3 = new ToolStripStatusLabel();
+            toolStripStatusLabel4 = new ToolStripStatusLabel();
+            toolStripStatusLabel5 = new ToolStripStatusLabel();
+            toolStripStatusLabel6 = new ToolStripStatusLabel();
             groupBox1.SuspendLayout();
             toolStrip1.SuspendLayout();
+            statusStrip1.SuspendLayout();
             SuspendLayout();
             // 
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(423, 12);
+            label1.Location = new Point(423, 32);
             label1.Name = "label1";
             label1.Size = new Size(68, 17);
             label1.TabIndex = 0;
@@ -80,7 +85,7 @@
             // 
             textBox1.AllowDrop = true;
             textBox1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
-            textBox1.Location = new Point(423, 35);
+            textBox1.Location = new Point(423, 55);
             textBox1.Name = "textBox1";
             textBox1.PlaceholderText = "输入txt路径或直接拖拽小说到此";
             textBox1.Size = new Size(369, 23);
@@ -91,7 +96,7 @@
             button1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
             button1.AutoSize = true;
             button1.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            button1.Location = new Point(750, 7);
+            button1.Location = new Point(750, 27);
             button1.Name = "button1";
             button1.Size = new Size(42, 27);
             button1.TabIndex = 2;
@@ -103,9 +108,9 @@
             // 
             richTextBox1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             richTextBox1.Font = new Font("Microsoft YaHei UI", 11.25F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            richTextBox1.Location = new Point(199, 65);
+            richTextBox1.Location = new Point(199, 92);
             richTextBox1.Name = "richTextBox1";
-            richTextBox1.Size = new Size(593, 378);
+            richTextBox1.Size = new Size(593, 344);
             richTextBox1.TabIndex = 4;
             richTextBox1.Text = "";
             // 
@@ -130,7 +135,7 @@
             groupBox1.Controls.Add(label3);
             groupBox1.Controls.Add(comboBox1);
             groupBox1.Controls.Add(label2);
-            groupBox1.Location = new Point(12, 8);
+            groupBox1.Location = new Point(12, 28);
             groupBox1.Name = "groupBox1";
             groupBox1.Size = new Size(405, 58);
             groupBox1.TabIndex = 14;
@@ -192,17 +197,16 @@
             listBox1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
             listBox1.FormattingEnabled = true;
             listBox1.ItemHeight = 17;
-            listBox1.Location = new Point(12, 65);
+            listBox1.Location = new Point(12, 92);
             listBox1.Name = "listBox1";
             listBox1.ScrollAlwaysVisible = true;
-            listBox1.Size = new Size(183, 378);
+            listBox1.Size = new Size(183, 344);
             listBox1.TabIndex = 24;
             // 
             // toolStrip1
             // 
-            toolStrip1.Dock = DockStyle.Bottom;
-            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripSplitButton1, toolStripLabel1, toolStripComboBox1, toolStripLabel2, toolStripComboBox2, toolStripSeparator3, toolStripLabel3, toolStripButton1, toolStripButton2, toolStripButton3, toolStripSeparator1, toolStripLabel4, toolStripLabel5, toolStripSeparator2, toolStripLabel6, toolStripLabel7 });
-            toolStrip1.Location = new Point(0, 446);
+            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripSplitButton1, toolStripLabel1, toolStripComboBox1, toolStripLabel2, toolStripComboBox2, toolStripSeparator3, toolStripLabel3, toolStripButton1, toolStripButton2, toolStripButton3, toolStripSeparator1, toolStripButton4, toolStripSeparator2 });
+            toolStrip1.Location = new Point(0, 0);
             toolStrip1.Name = "toolStrip1";
             toolStrip1.Size = new Size(804, 25);
             toolStrip1.TabIndex = 26;
@@ -222,21 +226,21 @@
             // 背景色ToolStripMenuItem
             // 
             背景色ToolStripMenuItem.Name = "背景色ToolStripMenuItem";
-            背景色ToolStripMenuItem.Size = new Size(180, 22);
+            背景色ToolStripMenuItem.Size = new Size(112, 22);
             背景色ToolStripMenuItem.Text = "背景色";
             背景色ToolStripMenuItem.Click += 背景色ToolStripMenuItem_Click;
             // 
             // 字体ToolStripMenuItem
             // 
             字体ToolStripMenuItem.Name = "字体ToolStripMenuItem";
-            字体ToolStripMenuItem.Size = new Size(180, 22);
+            字体ToolStripMenuItem.Size = new Size(112, 22);
             字体ToolStripMenuItem.Text = "字体";
             字体ToolStripMenuItem.Click += 字体ToolStripMenuItem_Click;
             // 
             // 语音包ToolStripMenuItem
             // 
             语音包ToolStripMenuItem.Name = "语音包ToolStripMenuItem";
-            语音包ToolStripMenuItem.Size = new Size(180, 22);
+            语音包ToolStripMenuItem.Size = new Size(112, 22);
             语音包ToolStripMenuItem.Text = "语音包";
             // 
             // toolStripLabel1
@@ -266,7 +270,7 @@
             toolStripComboBox2.Items.AddRange(new object[] { "自动整行", "自动整章", "手动整行", "手动整章" });
             toolStripComboBox2.Name = "toolStripComboBox2";
             toolStripComboBox2.Size = new Size(70, 25);
-            toolStripComboBox2.Text = "自动整行";            
+            toolStripComboBox2.Text = "自动整行";
             // 
             // toolStripSeparator3
             // 
@@ -299,11 +303,6 @@
             toolStripButton2.Text = "开始";
             toolStripButton2.Click += toolStripButton2_Click;
             // 
-            // toolStripSeparator1
-            // 
-            toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(6, 25);
-            // 
             // toolStripButton3
             // 
             toolStripButton3.DisplayStyle = ToolStripItemDisplayStyle.Image;
@@ -314,35 +313,71 @@
             toolStripButton3.Text = "下一章";
             toolStripButton3.Click += toolStripButton3_Click;
             // 
-            // toolStripLabel4
+            // toolStripSeparator1
             // 
-            toolStripLabel4.Name = "toolStripLabel4";
-            toolStripLabel4.Size = new Size(44, 22);
-            toolStripLabel4.Text = "状态：";
+            toolStripSeparator1.Name = "toolStripSeparator1";
+            toolStripSeparator1.Size = new Size(6, 25);
             // 
-            // toolStripLabel5
+            // toolStripButton4
             // 
-            toolStripLabel5.Name = "toolStripLabel5";
-            toolStripLabel5.Size = new Size(0, 22);
+            toolStripButton4.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            toolStripButton4.Image = (Image)resources.GetObject("toolStripButton4.Image");
+            toolStripButton4.ImageTransparentColor = Color.Magenta;
+            toolStripButton4.Name = "toolStripButton4";
+            toolStripButton4.Size = new Size(23, 22);
+            toolStripButton4.Text = "保存";
+            toolStripButton4.Click += toolStripButton4_Click;
             // 
             // toolStripSeparator2
             // 
             toolStripSeparator2.Name = "toolStripSeparator2";
             toolStripSeparator2.Size = new Size(6, 25);
             // 
-            // toolStripLabel6
+            // statusStrip1
             // 
-            toolStripLabel6.Name = "toolStripLabel6";
-            toolStripLabel6.Size = new Size(0, 22);
-            toolStripLabel6.ToolTipText = "上次阅读章";
+            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1, toolStripStatusLabel2, toolStripStatusLabel3, toolStripStatusLabel4, toolStripStatusLabel5, toolStripStatusLabel6 });
+            statusStrip1.Location = new Point(0, 449);
+            statusStrip1.Name = "statusStrip1";
+            statusStrip1.Size = new Size(804, 22);
+            statusStrip1.TabIndex = 27;
+            statusStrip1.Text = "statusStrip1";
             // 
-            // toolStripLabel7
+            // toolStripStatusLabel1
             // 
-            toolStripLabel7.Name = "toolStripLabel7";
-            toolStripLabel7.Size = new Size(19, 22);
-            toolStripLabel7.Text = " 0";
-            toolStripLabel7.ToolTipText = "按行阅读行号标记";
-            toolStripLabel7.Visible = false;
+            toolStripStatusLabel1.Name = "toolStripStatusLabel1";
+            toolStripStatusLabel1.Size = new Size(44, 17);
+            toolStripStatusLabel1.Text = "状态：";
+            // 
+            // toolStripStatusLabel2
+            // 
+            toolStripStatusLabel2.Name = "toolStripStatusLabel2";
+            toolStripStatusLabel2.Size = new Size(12, 17);
+            toolStripStatusLabel2.Text = " ";
+            // 
+            // toolStripStatusLabel3
+            // 
+            toolStripStatusLabel3.Name = "toolStripStatusLabel3";
+            toolStripStatusLabel3.Size = new Size(56, 17);
+            toolStripStatusLabel3.Text = "当前章：";
+            // 
+            // toolStripStatusLabel4
+            // 
+            toolStripStatusLabel4.Name = "toolStripStatusLabel4";
+            toolStripStatusLabel4.Size = new Size(0, 17);
+            toolStripStatusLabel4.ToolTipText = "当前章";
+            // 
+            // toolStripStatusLabel5
+            // 
+            toolStripStatusLabel5.Name = "toolStripStatusLabel5";
+            toolStripStatusLabel5.Size = new Size(56, 17);
+            toolStripStatusLabel5.Text = "当前行：";
+            // 
+            // toolStripStatusLabel6
+            // 
+            toolStripStatusLabel6.Name = "toolStripStatusLabel6";
+            toolStripStatusLabel6.Size = new Size(15, 17);
+            toolStripStatusLabel6.Text = "0";
+            toolStripStatusLabel6.ToolTipText = "当前行";
             // 
             // ReadTXT
             // 
@@ -350,6 +385,7 @@
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(804, 471);
+            Controls.Add(statusStrip1);
             Controls.Add(toolStrip1);
             Controls.Add(listBox1);
             Controls.Add(groupBox1);
@@ -364,6 +400,8 @@
             groupBox1.PerformLayout();
             toolStrip1.ResumeLayout(false);
             toolStrip1.PerformLayout();
+            statusStrip1.ResumeLayout(false);
+            statusStrip1.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -391,10 +429,6 @@
         private ToolStripButton toolStripButton2;
         private ToolStripButton toolStripButton3;
         private ToolStripSeparator toolStripSeparator1;
-        private ToolStripLabel toolStripLabel4;
-        private ToolStripLabel toolStripLabel5;
-        private ToolStripLabel toolStripLabel6;
-        private ToolStripLabel toolStripLabel7;
         private FontDialog fontDialog1;
         private ColorDialog colorDialog1;
         private ToolStripSeparator toolStripSeparator2;
@@ -404,5 +438,13 @@
         private ToolStripMenuItem 字体ToolStripMenuItem;
         private Button button3;
         private ToolStripMenuItem 语音包ToolStripMenuItem;
+        private ToolStripButton toolStripButton4;
+        private StatusStrip statusStrip1;
+        private ToolStripStatusLabel toolStripStatusLabel1;
+        private ToolStripStatusLabel toolStripStatusLabel2;
+        private ToolStripStatusLabel toolStripStatusLabel3;
+        private ToolStripStatusLabel toolStripStatusLabel4;
+        private ToolStripStatusLabel toolStripStatusLabel5;
+        private ToolStripStatusLabel toolStripStatusLabel6;
     }
 }

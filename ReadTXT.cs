@@ -3,19 +3,17 @@ using System.Text;
 using System.Text.Json; // 或者使用 Newtonsoft.Json
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
-using Application = System.Windows.Forms.Application;
+
 
 
 namespace ReadTXT
 {
     public partial class ReadTXT : Form
     {
-        private List<string>? fileLines; // 存储文件的所有行
-        private Dictionary<string, int>? chapterIndices; // 存储章节标题到其行索引的映射
         private readonly SpeechSynthesizer synthesizer = new();
-        private bool isSpeaking = false; // 用于跟踪是否正在朗读             
-
+        private bool isSpeaking = false; // 用于跟踪是否正在朗读
+        Dictionary<string, string> chapters = []; // 确保在循环前初始化字典       
+        private string currentChapterTitle; // 当前正在编辑的章节标题
 
         public class BlackColor
         {
@@ -34,10 +32,10 @@ namespace ReadTXT
             public string? textBox2Pattern { get; set; }
             public string? toolStripComboBox1Pattern { get; set; }
             public string? toolStripComboBox2Pattern { get; set; }
-            public string? toolStripLabel6Pattern { get; set; }
+            public string? toolStripStatusLabel4Pattern { get; set; }
             public string? FontName { get; set; }
-            public int FontStyle { get; set; } // 注意：这里假设 FontStyle 是一个整数，您可能需要额外的逻辑来解析它
-            public double FontSize { get; set; } // 注意：FontSize 是 double 类型
+            public int FontStyle { get; set; } 
+            public double FontSize { get; set; } 
             public required BlackColor BlackColor { get; set; }
 
         }
@@ -94,8 +92,8 @@ namespace ReadTXT
                 // 处理转换失败的情况，例如使用默认语速
                 this.toolStripComboBox1.Text = "0";
                 synthesizer.Rate = 0; // 或者设置为其他你认为合适的默认值
-                this.toolStripLabel5.Text = "朗读速度只能设置-10~10的整数！！！";
-                this.toolStripLabel5.ForeColor = Color.Red;
+                this.toolStripStatusLabel2.Text = "朗读速度只能设置-10~10的整数！！！";
+                this.toolStripStatusLabel2.ForeColor = Color.Red;
             }
         }
         //加载已安装语音包
@@ -157,7 +155,7 @@ namespace ReadTXT
         //定位到上次阅读章节
         private void SetListBoxSelectedItemByToolStripLabelText()
         {
-            string? searchText = this.toolStripLabel6.Text;
+            string? searchText = this.toolStripStatusLabel4.Text;
             string ck = "0";
             if (searchText != "")
             {
@@ -171,7 +169,7 @@ namespace ReadTXT
                     }
                 }
                 //如果没有找到上次的章节
-                if (ck == "0") { this.toolStripLabel5.Text = "你可能换了一本小说，找不到上次看的那章>_<"; }
+                if (ck == "0") { this.toolStripStatusLabel2.Text = "你可能换了一本小说，找不到上次看的那章>_<"; }
             }
         }
         //DragEnter事件处理程序
@@ -205,92 +203,107 @@ namespace ReadTXT
         }
         private void Analyze_novel()
         {
-            this.richTextBox1.Text = "";
-            this.toolStripLabel5.Text = "";
-            // 指定TXT文件的路径
-            string filePath = this.textBox1.Text;
-            try
+            this.toolStripStatusLabel2.Text = "";//当前状态
+            this.toolStripStatusLabel4.Text="";//当前章节
+            this.toolStripStatusLabel6.Text ="0";//当前行 
+            this.listBox1.Items.Clear();//目录
+            currentChapterTitle="";//目录
+            this.richTextBox1.Text = "";//正文
+            chapters= [];//正文            
+            string filePath = this.textBox1.Text;// 指定TXT文件的路径
+            if (filePath!="")
             {
-                LoadFileContent(filePath); // 加载文件内容
-                PopulateListBox(); // 填充ListBox
-                listBox1.SelectedIndexChanged += ListBox1_SelectedIndexChanged;
-                if (this.listBox1.Items.Count > 0)
+                try
                 {
-                    if (this.toolStripLabel6.Text == "")
+                    LoadFileContent(filePath); // 加载文件内容
+                    PopulateListBox(); // 填充ListBox
+                    listBox1.SelectedIndexChanged += ListBox1_SelectedIndexChanged;
+                    if (this.listBox1.Items.Count > 0)
                     {
-                        this.toolStripLabel5.Text = "解析完成，开始阅读吧~";
+                        if (this.toolStripStatusLabel4.Text == "")
+                        {
+                            this.toolStripStatusLabel2.Text = "解析完成，开始阅读吧~";
+                        }
+                        else
+                        {
+                            this.toolStripStatusLabel2.Text = "已定位到上次的章节，继续阅读吧~";
+                        }
+                        this.toolStripStatusLabel2.ForeColor = Color.Black;
                     }
                     else
                     {
-                        this.toolStripLabel5.Text = "已定位到上次的章节，继续阅读吧~";
+                        this.toolStripStatusLabel2.Text = "未能解析到相关章节！请确认文件中有与规则匹配的章节标题。";
+                        this.toolStripStatusLabel2.ForeColor = Color.Red;
                     }
-                    this.toolStripLabel5.ForeColor = Color.Black;
+
                 }
-                else
+                catch (Exception ex)
                 {
-                    this.toolStripLabel5.Text = "未能解析到相关章节！请确认文件中有与规则匹配的章节标题。";
-                    this.toolStripLabel5.ForeColor = Color.Red;
+                    this.toolStripStatusLabel2.Text = "读取文件时出错: " + ex.Message;
+                    this.toolStripStatusLabel2.ForeColor = Color.Red;
                 }
-
-            }
-            catch (Exception ex)
-            {
-                this.toolStripLabel5.Text = "读取文件时出错: " + ex.Message;
-                this.toolStripLabel5.ForeColor = Color.Red;
-            }
+            }                     
         }
-
+        //加载章节和对应的正文
         private void LoadFileContent(string filePath)
         {
-            // 初始化 fileLines
-            fileLines = [.. File.ReadAllLines(filePath)];
+            string[] lines = File.ReadAllLines(filePath);
             if (this.textBox2.Text != "")
             {
-                // 初始化 chapterIndices
-                chapterIndices = [];
-                // 遍历 fileLines 并填充 chapterIndices
-                for (int i = 0; i < fileLines.Count; i++)
+                for (int j = 0; j < lines.Length;)
                 {
-                    // 根据 textBox2.Text 匹配章节标题的正则表达式模式
-                    if (Regex.IsMatch(fileLines[i], this.textBox2.Text))
+                    if (Regex.IsMatch(lines[j], this.textBox2.Text))
                     {
-                        // 使用 Trim() 去除字符串两端的空白字符，并作为键添加到字典中
-                        string trimmedLine = fileLines[i].Trim();
-                        if (!chapterIndices.ContainsKey(trimmedLine)) // 避免重复键（虽然按您的逻辑这似乎不太可能发生）
+                        string chapterTitle = lines[j];
+                        string chapterContent = "";
+                        j++;
+                        int contentIndex = j;
+                        while (contentIndex < lines.Length && !Regex.IsMatch(lines[contentIndex], this.textBox2.Text))
                         {
-                            chapterIndices[trimmedLine] = i;
+                            chapterContent += lines[contentIndex] + Environment.NewLine;
+                            contentIndex++;
                         }
+                        chapters[chapterTitle] =chapterTitle+ chapterContent; 
+                        j = contentIndex;
+                    }
+                    else
+                    {
+                        j++;
                     }
                 }
             }
             else
             {
                 richTextBox1.Text = "";
-                richTextBox1.Text = string.Join(Environment.NewLine, fileLines);
+                richTextBox1.Text = string.Join(Environment.NewLine, lines);
             }
         }
+        //将章节添加到目录
         private void PopulateListBox()
         {
-            // 检查 chapterIndices 是否为 null
-            if (chapterIndices != null)
+            if (chapters != null)
             {
                 listBox1.Items.Clear();
-                foreach (var chapter in chapterIndices.Keys)
+                foreach (var chapter in chapters.Keys)
                 {
                     listBox1.Items.Add(chapter);
                 }
             }
             else
             {
-                // 如果 chapterIndices 是 null，可以选择在 ListBox 中显示一条消息或什么都不做
-                this.toolStripLabel5.Text = "未能匹配到相关章节！建议查看原始文档中章节标题是否与章节规则匹配！！！";
-                this.toolStripLabel5.ForeColor = Color.Red;
-
+                this.toolStripStatusLabel2.Text = "未能匹配到相关章节！建议查看原始文档中章节标题是否与章节规则匹配！！！";
+                this.toolStripStatusLabel2.ForeColor = Color.Red;
             }
         }
+
         private void ListBox1_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            UpdateTextBoxWithNextChapterText();
+            if (this.toolStripStatusLabel4.Text!=null)
+            {
+                chapters[this.toolStripStatusLabel4.Text] = this.richTextBox1.Text;
+            }
+            this.toolStripStatusLabel4.Text=listBox1.Items[listBox1.SelectedIndex].ToString() ?? "Default Value"; 
+            UpdateText();
         }
         //点击设置：加载上次的阅读状态
         private void button2_Click(object sender, EventArgs e)
@@ -312,7 +325,7 @@ namespace ReadTXT
                         textBox2Pattern = this.textBox2.Text,
                         toolStripComboBox1Pattern =this. toolStripComboBox1.Text,
                         toolStripComboBox2Pattern =this. toolStripComboBox2.Text,
-                        toolStripLabel6Pattern =this. toolStripLabel6.Text,
+                        toolStripStatusLabel4Pattern =this.toolStripStatusLabel4.Text,
                         FontName=this.richTextBox1.Font.Name,
                         FontStyle=this.richTextBox1.Font.Style,
                         FontSize=this.richTextBox1.Font.Size,
@@ -345,12 +358,12 @@ namespace ReadTXT
                     this.textBox2.Text = firstPattern.textBox2Pattern;//上次阅读的小说章节规则
                     this.toolStripComboBox1.Text = firstPattern.toolStripComboBox1Pattern;//语速
                     this.toolStripComboBox2.Text = firstPattern.toolStripComboBox2Pattern;//模式
-                    this.toolStripLabel6.Text = firstPattern.toolStripLabel6Pattern;//上次阅读到的章节
+                    this.toolStripStatusLabel4.Text = firstPattern.toolStripStatusLabel4Pattern;//上次阅读到的章节
                     // 创建新的 Font 对象
-                    FontStyle fontStyle = (FontStyle)firstPattern.FontStyle; // 这里假设 FontStyle 存储为整数，并且与 FontStyle 枚举的值匹配
+                    FontStyle fontStyle = (FontStyle)firstPattern.FontStyle;
                     Font newFont = new(
                         familyName: firstPattern.FontName ?? "Microsoft YaHei UI",
-                        (float)firstPattern.FontSize, // 注意：FontSize 需要转换为 float
+                        (float)firstPattern.FontSize,
                         fontStyle
                     );
                     // 设置 RichTextBox 的字体
@@ -361,15 +374,15 @@ namespace ReadTXT
                 }
                 else
                 {
-                    this.toolStripLabel5.Text = "JSON文件中没有有效的规则设置。";
-                    this.toolStripLabel5.ForeColor = Color.Red;
+                    this.toolStripStatusLabel2.Text = "JSON文件中没有有效的规则设置。";
+                    this.toolStripStatusLabel2.ForeColor = Color.Red;
                 }
             }
             else
             {
                 // 文件不存在，可以执行创建文件或其他操作
-                this.toolStripLabel5.Text = "文件不存在: " + jsonPath;
-                this.toolStripLabel5.ForeColor = Color.Red;
+                this.toolStripStatusLabel2.Text = "文件不存在: " + jsonPath;
+                this.toolStripStatusLabel2.ForeColor = Color.Red;
             }
         }
 
@@ -382,6 +395,7 @@ namespace ReadTXT
         //开始
         private void toolStripButton2_Click(object sender, EventArgs e)
         {
+            StopRead();
             StartRead();
         }
         //下一章
@@ -394,18 +408,22 @@ namespace ReadTXT
         private void StopRead()
         {
             isSpeaking = false; // 更新状态为不再朗读
-            this.toolStripLabel5.Text = "已暂停朗读。";
-            this.toolStripLabel5.ForeColor = Color.Black;
+            this.toolStripStatusLabel2.Text = "已暂停朗读。";
+            this.toolStripStatusLabel2.ForeColor = Color.Black;
             synthesizer.SpeakAsyncCancelAll();
             synthesizer.SpeakCompleted -= Synthesizer_SpeakCompleted; // 取消订阅事件       
         }
         private void StartRead()
         {
+            if (int.TryParse(this.toolStripComboBox1.Text, out int rate))
+            {
+                synthesizer.Rate = rate;
+            }
             if (!isSpeaking)
             {
                 isSpeaking = true; // 设置为正在朗读
-                this.toolStripLabel5.Text = "正在朗读...";
-                this.toolStripLabel5.ForeColor = Color.Black;
+                this.toolStripStatusLabel2.Text = "正在朗读...";
+                this.toolStripStatusLabel2.ForeColor = Color.Black;
                 if (this.toolStripComboBox2.Text == "手动整章")
                 {
                     synthesizer.SpeakAsync(this.richTextBox1.Text);
@@ -432,7 +450,6 @@ namespace ReadTXT
         //获取下一章目录
         private void GoToNextChapter()
         {
-            // 检查是否有选中的项
             if (listBox1.SelectedIndex >= 0)
             {
                 // 获取选中的项
@@ -445,15 +462,15 @@ namespace ReadTXT
                     // 获取下一个项的索引
                     int nextItemIndex = selectedIndex + 1;
                     listBox1.SelectedIndex = nextItemIndex;
-                    this.toolStripLabel6.Text = selectedItem;
+                    this.toolStripStatusLabel4.Text = selectedItem;
                     synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
                 }
                 else
                 {
                     synthesizer.SpeakAsyncCancelAll();
                     isSpeaking = false; // 更新状态为不再朗读
-                    this.toolStripLabel5.Text = "全文完。";
-                    this.toolStripLabel5.ForeColor = Color.Black;
+                    this.toolStripStatusLabel2.Text = "全文完。";
+                    this.toolStripStatusLabel2.ForeColor = Color.Black;
                     for (int i = 0; i < 5; i++)
                     {
                         synthesizer.SpeakCompleted -= Synthesizer_SpeakCompleted;
@@ -461,36 +478,18 @@ namespace ReadTXT
                 }
             }
         }
-        private void UpdateTextBoxWithNextChapterText()
+        private void UpdateText()
         {
-            if (chapterIndices != null && fileLines != null && listBox1.SelectedIndex >= 0)
-            {
+            if (listBox1.SelectedIndex!=-1)
+            {                
                 object selectedItem = listBox1.Items[listBox1.SelectedIndex];
                 string selectedChapter = selectedItem.ToString() ?? "Default Value";
-                int selectedIndex = chapterIndices[selectedChapter];//本章起始行号                
-                int nextIndex;
-                // 尝试获取下一个章节的索引
-                if (listBox1.SelectedIndex < listBox1.Items.Count - 1)
+                currentChapterTitle= selectedChapter;
+                if (chapters.TryGetValue(currentChapterTitle, out string? value))
                 {
-                    string nextChapter = listBox1.Items[listBox1.SelectedIndex + 1].ToString() ?? "Default Value";
-                    nextIndex = chapterIndices[nextChapter] - selectedIndex - 1;
+                    this.richTextBox1.Text = value;
+                    this.toolStripStatusLabel6.Text="0";
                 }
-                else
-                {
-                    nextIndex = fileLines.Count - selectedIndex - 1;
-                }
-                // 提取两个章节之间的内容
-                List<string> contentBetweenChapters = fileLines.GetRange(selectedIndex + 1, nextIndex);
-                // 显示内容，这里以StringBuilder为例来合并多行内容
-                StringBuilder contentBuilder = new();
-                foreach (string line in contentBetweenChapters)
-                {
-                    contentBuilder.AppendLine(line);
-                }
-                // 在文本框中显示内容
-                this.richTextBox1.Text = selectedChapter + "\r\n" + contentBuilder.ToString().Trim() + "\r\n";
-                this.toolStripLabel6.Text = selectedChapter;
-                this.toolStripLabel7.Text = "0";//本章起始行
             }
         }
         //朗读结束后的事件处理
@@ -502,25 +501,25 @@ namespace ReadTXT
 
             if (this.toolStripComboBox2.Text == "手动整章")
             {
-                this.toolStripLabel5.Text = "本章结束，请手动点下一章。";
+                this.toolStripStatusLabel2.Text = "本章结束，请手动点下一章。";
             }
             else if (this.toolStripComboBox2.Text == "手动整行")
             {
-                this.toolStripLabel5.Text = "本行结束，请手动点下一行。";
+                this.toolStripStatusLabel2.Text = "本行结束，请手动点下一行。";
             }
             else if (this.toolStripComboBox2.Text == "自动整章")
             {
                 GoToNextChapter();
-                UpdateTextBoxWithNextChapterText();
+                UpdateText();
                 synthesizer.SpeakAsync(this.richTextBox1.Text);
             }
             else if (this.toolStripComboBox2.Text == "自动整行")
             {
                 SetRichTextBoxTextColor(richTextBox1, Color.Red, "1");
-                if (this.toolStripLabel5.Text == "本章结束。")
+                if (this.toolStripStatusLabel2.Text == "本章结束。")
                 {
                     GoToNextChapter();
-                    UpdateTextBoxWithNextChapterText();
+                    UpdateText();
                 }
                 else
                 {
@@ -535,13 +534,13 @@ namespace ReadTXT
             base.OnFormClosed(e);
             synthesizer.Dispose();
         }
-        //改变正文字体
+        //改变朗读行字体红色
         private void SetRichTextBoxTextColor(RichTextBox richTextBox, Color color, string spk)
         {
             // 获取所有行的数量
             int lineCount = richTextBox.Lines.Length;
-            this.toolStripLabel7.Text ??= "0";
-            int i = int.Parse(this.toolStripLabel7.Text); // 将字符串转换为整数    
+            this.toolStripStatusLabel6.Text ??= "0";
+            int i = int.Parse(this.toolStripStatusLabel6.Text); // 将字符串转换为整数    
             int startIndex = richTextBox.GetFirstCharIndexFromLine(i);
             int length;
             if (i < lineCount - 1 && startIndex != -1)
@@ -555,28 +554,29 @@ namespace ReadTXT
                 startIndex = 0;
                 length = richTextBox.Text.Length;// 获取当前行的长度（包括行尾的换行符）
             }
-            this.toolStripLabel7.Text = i.ToString();
+            this.toolStripStatusLabel6.Text = i.ToString();
+            //朗读字体设置为红色
             richTextBox.Select(startIndex, length);
+            richTextBox.SelectionColor = color;
             string txt = richTextBox.SelectedText;
+            // 取消选择，避免用户看到选择区域 
+            richTextBox.DeselectAll();
             if (length - richTextBox.Text.Length == 0 && spk == "1")//最后一行
             {
                 txt = richTextBox.Lines[lineCount - 1];
             }
-            richTextBox.SelectionColor = color;
-            // 取消选择，避免用户看到选择区域 
-            richTextBox.DeselectAll();
             if (spk == "1")
             {
                 isSpeaking = false;
                 if (!isSpeaking)
                 {
                     isSpeaking = true; // 设置为正在朗读
-                    this.toolStripLabel5.Text = "正在朗读...";
-                    this.toolStripLabel5.ForeColor = Color.Black;
+                    this.toolStripStatusLabel2.Text = "正在朗读...";
+                    this.toolStripStatusLabel2.ForeColor = Color.Black;
                     if (length - richTextBox.Text.Length == 0 && spk == "1")
                     {
-                        this.toolStripLabel5.Text = "本章结束。";
-                        this.toolStripLabel5.ForeColor = Color.Black;
+                        this.toolStripStatusLabel2.Text = "本章结束。";
+                        this.toolStripStatusLabel2.ForeColor = Color.Black;
                     }
                     synthesizer.SpeakAsync(txt);
                 }
@@ -596,17 +596,54 @@ namespace ReadTXT
         //修改背景色
         private void 背景色ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // 显示颜色对话框
-            using ColorDialog colorDialog = this.colorDialog1 ?? new ColorDialog(); // 如果colorDialog1为空，则创建一个新的
-                                                                                    // 如果用户点击了确定
-            if (colorDialog.ShowDialog() == DialogResult.OK)
+            // 如果用户点击了确定                                                                        
+            if (colorDialog1.ShowDialog() == DialogResult.OK)
             {
                 // 获取用户选择的颜色
-                Color selectedColor = colorDialog.Color;
+                Color selectedColor = colorDialog1.Color;
                 // 应用颜色到RichTextBox的背景
                 this.richTextBox1.BackColor = selectedColor;
                 this.listBox1.BackColor = selectedColor;
             }
-        }     
+        }
+        //保存
+        private void toolStripButton4_Click(object sender, EventArgs e)
+        {
+            //原来的文件路径
+            string originalFilePath = this.textBox1.Text;
+            string directory = Path.GetDirectoryName(originalFilePath);
+            string fileName = Path.GetFileNameWithoutExtension(originalFilePath);
+            string extension = Path.GetExtension(originalFilePath);
+            // 获取当前时间，并格式化
+            DateTime now = DateTime.Now;
+            string timestamp = now.ToString("yyyyMMddHHmmss");
+            // 构建新的文件名
+            string newFileName = $"{fileName}-{timestamp}{extension}";
+            string newFilePath = Path.Combine(directory, newFileName);
+            Encoding selectedEncoding = this.comboBox1.SelectedItem.ToString() switch
+            {
+                "UTF-8" => Encoding.UTF8,
+                "UTF-8 BOM" => new UTF8Encoding(true),// 包含 BOM 的 UTF-8 编码
+                "ANSI" => Encoding.Default,// ANSI
+                _ => Encoding.UTF8,
+            };
+            if (!string.IsNullOrEmpty(currentChapterTitle))
+            {
+                chapters[currentChapterTitle] = this.richTextBox1.Text;
+                using StreamWriter writer = new(newFilePath, false, selectedEncoding);
+                foreach (var chapter in chapters)
+                {
+                    writer.Write(chapter.Value); // 写入章节内容
+                    writer.WriteLine(); // 在每个章节内容后添加一个空行作为分隔
+                }
+            }
+            else
+            {
+                using StreamWriter writer = new(newFilePath, false, selectedEncoding);
+                writer.Write(this.richTextBox1.Text); // 写入章节内容
+            }
+            this.toolStripStatusLabel2.Text = "保存成功，路径："+ newFilePath;
+            this.toolStripStatusLabel2.ForeColor = Color.Black;
+        }
     }
 }
