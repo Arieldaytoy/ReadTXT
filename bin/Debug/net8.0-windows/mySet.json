@@ -1,0 +1,25 @@
+{
+  "Patterns": [
+    {
+      "textBox1Pattern": "",
+      "textBox2Pattern": "\u7B2C\\d{4}\u7AE0",
+      "toolStripComboBox1Pattern": "5",
+      "toolStripComboBox2Pattern": "\u81EA\u52A8\u6574\u884C",
+      "toolStripLabel6Pattern": "",
+      "FontName": "Microsoft YaHei UI",
+      "FontStyle": 0,
+      "FontSize": 11.25,
+      "BlackColor": {
+        "R": 255,
+        "G": 255,
+        "B": 255,
+        "A": 255,
+        "IsKnownColor": false,
+        "IsEmpty": false,
+        "IsNamedColor": false,
+        "IsSystemColor": false,
+        "Name": "ffffffff"
+      }
+    }
+  ]
+}

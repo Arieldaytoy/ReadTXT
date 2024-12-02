@@ -1,0 +1,143 @@
+{
+  "version": 3,
+  "targets": {
+    "net8.0-windows7.0": {
+      "System.Speech/9.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/System.Speech.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.Speech.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net8.0/System.Speech.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "System.Speech/9.0.0": {
+      "sha512": "z8mvEVBfWSi0692vPOra8MougSEJCDzlaLj4g0aA87XDZpJoJD3BJTcJ0MuFbbN1fOT9Cr2ZFqXhZc+zzX0Gwg==",
+      "type": "package",
+      "path": "system.speech/9.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Speech.targets",
+        "lib/net462/_._",
+        "lib/net8.0/System.Speech.dll",
+        "lib/net8.0/System.Speech.xml",
+        "lib/net9.0/System.Speech.dll",
+        "lib/net9.0/System.Speech.xml",
+        "lib/netstandard2.0/System.Speech.dll",
+        "lib/netstandard2.0/System.Speech.xml",
+        "runtimes/win/lib/net8.0/System.Speech.dll",
+        "runtimes/win/lib/net8.0/System.Speech.xml",
+        "runtimes/win/lib/net9.0/System.Speech.dll",
+        "runtimes/win/lib/net9.0/System.Speech.xml",
+        "system.speech.9.0.0.nupkg.sha512",
+        "system.speech.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net8.0-windows7.0": [
+      "System.Speech >= 9.0.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\lx105\\.nuget\\packages\\": {},
+    "d:\\Program Files\\Visual Studio\\Shared\\NuGetPackages": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "d:\\Documents\\Visual Studio 2022\\My Programs\\ReadTXT\\ReadTXT.csproj",
+      "projectName": "ReadTXT",
+      "projectPath": "d:\\Documents\\Visual Studio 2022\\My Programs\\ReadTXT\\ReadTXT.csproj",
+      "packagesPath": "C:\\Users\\lx105\\.nuget\\packages\\",
+      "outputPath": "d:\\Documents\\Visual Studio 2022\\My Programs\\ReadTXT\\obj\\",
+      "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "d:\\Program Files\\Visual Studio\\Shared\\NuGetPackages"
+      ],
+      "configFilePaths": [
+        "C:\\Users\\lx105\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net8.0-windows"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net8.0-windows7.0": {
+          "targetAlias": "net8.0-windows",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "all"
+      },
+      "SdkAnalysisLevel": "9.0.100"
+    },
+    "frameworks": {
+      "net8.0-windows7.0": {
+        "targetAlias": "net8.0-windows",
+        "dependencies": {
+          "System.Speech": {
+            "target": "Package",
+            "version": "[9.0.0, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          },
+          "Microsoft.WindowsDesktop.App.WindowsForms": {
+            "privateAssets": "none"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.100/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

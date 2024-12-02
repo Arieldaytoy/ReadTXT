@@ -1,0 +1,45 @@
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.exe
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.deps.json
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.runtimeconfig.json
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.dll
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.pdb
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.ReadTXT.resources
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.csproj.GenerateResource.cache
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.GeneratedMSBuildEditorConfig.editorconfig
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.AssemblyInfoInputs.cache
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.AssemblyInfo.cs
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.csproj.CoreCompileInputs.cache
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.dll
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\refint\ReadTXT.dll
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.pdb
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.genruntimeconfig.cache
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ref\ReadTXT.dll
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.csproj.AssemblyReference.cache
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.csproj.Up2Date
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\bin\Debug\net8.0-windows\System.Speech.dll
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\bin\Debug\net8.0-windows\runtimes\win\lib\net8.0\System.Speech.dll
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.Properties.Resources.resources
+D:\Documents\7 My Program\C#\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.exe
+D:\Documents\7 My Program\C#\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.deps.json
+D:\Documents\7 My Program\C#\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.runtimeconfig.json
+D:\Documents\7 My Program\C#\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.dll
+D:\Documents\7 My Program\C#\ReadTXT\bin\Debug\net8.0-windows\ReadTXT.pdb
+D:\Documents\7 My Program\C#\ReadTXT\bin\Debug\net8.0-windows\Newtonsoft.Json.dll
+D:\Documents\7 My Program\C#\ReadTXT\bin\Debug\net8.0-windows\System.Speech.dll
+D:\Documents\7 My Program\C#\ReadTXT\bin\Debug\net8.0-windows\runtimes\win\lib\net8.0\System.Speech.dll
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.csproj.AssemblyReference.cache
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.Properties.Resources.resources
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.ReadTXT.resources
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.csproj.GenerateResource.cache
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.GeneratedMSBuildEditorConfig.editorconfig
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.AssemblyInfoInputs.cache
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.AssemblyInfo.cs
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.csproj.CoreCompileInputs.cache
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.sourcelink.json
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.csproj.Up2Date
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.dll
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\refint\ReadTXT.dll
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.pdb
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.genruntimeconfig.cache
+D:\Documents\7 My Program\C#\ReadTXT\obj\Debug\net8.0-windows\ref\ReadTXT.dll
+d:\Documents\Visual Studio 2022\My Programs\ReadTXT\obj\Debug\net8.0-windows\ReadTXT.sourcelink.json
