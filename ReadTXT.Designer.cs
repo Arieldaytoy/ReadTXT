@@ -396,6 +396,7 @@
             MinimumSize = new Size(820, 510);
             Name = "ReadTXT";
             Text = "ReadTXT";
+            Load += ReadTXT_Load;
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             toolStrip1.ResumeLayout(false);

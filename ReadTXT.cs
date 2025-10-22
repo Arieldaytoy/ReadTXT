@@ -14,7 +14,7 @@ namespace ReadTXT
         private bool isSpeaking = false; // 用于跟踪是否正在朗读
         Dictionary<string, string> chapters = []; // 确保在循环前初始化字典       
         private string currentChapterTitle; // 当前正在编辑的章节标题
-
+        private string oldChapter = "";
         public class BlackColor
         {
             public byte R { get; set; }
@@ -34,8 +34,8 @@ namespace ReadTXT
             public string? toolStripComboBox2Pattern { get; set; }
             public string? toolStripStatusLabel4Pattern { get; set; }
             public string? FontName { get; set; }
-            public int FontStyle { get; set; } 
-            public double FontSize { get; set; } 
+            public int FontStyle { get; set; }
+            public double FontSize { get; set; }
             public required BlackColor BlackColor { get; set; }
 
         }
@@ -76,6 +76,10 @@ namespace ReadTXT
             this.textBox1.DragEnter += textBox1_DragEnter;
             this.textBox1.DragDrop += textBox1_DragDrop;
             synthesizer = new SpeechSynthesizer();
+        }
+
+        private void ReadTXT_Load(object sender, EventArgs e)
+        {
             LoadTTSVoices();
             Load_set();//读取上次的设置
             Analyze_novel();//解析小说
@@ -154,14 +158,13 @@ namespace ReadTXT
 
         //定位到上次阅读章节
         private void SetListBoxSelectedItemByToolStripLabelText()
-        {
-            string? searchText = this.toolStripStatusLabel4.Text;
+        {           
             string ck = "0";
-            if (searchText != "")
+            if (oldChapter != "")
             {
                 for (int i = 0; i < listBox1.Items.Count; i++)
                 {
-                    if (listBox1.Items[i].ToString() == searchText)
+                    if (listBox1.Items[i].ToString() == oldChapter)
                     {
                         listBox1.SelectedIndex = i;
                         ck = "1";
@@ -242,7 +245,7 @@ namespace ReadTXT
                     this.toolStripStatusLabel2.Text = "读取文件时出错: " + ex.Message;
                     this.toolStripStatusLabel2.ForeColor = Color.Red;
                 }
-            }                     
+            }
         }
         //加载章节和对应的正文
         private void LoadFileContent(string filePath)
@@ -263,7 +266,7 @@ namespace ReadTXT
                             chapterContent += lines[contentIndex] + Environment.NewLine;
                             contentIndex++;
                         }
-                        chapters[chapterTitle] =chapterTitle+ chapterContent; 
+                        chapters[chapterTitle] =chapterTitle+ chapterContent;
                         j = contentIndex;
                     }
                     else
@@ -302,8 +305,11 @@ namespace ReadTXT
             {
                 chapters[this.toolStripStatusLabel4.Text] = this.richTextBox1.Text;
             }
-            this.toolStripStatusLabel4.Text=listBox1.Items[listBox1.SelectedIndex].ToString() ?? "Default Value"; 
+            this.toolStripStatusLabel4.Text=listBox1.Items[listBox1.SelectedIndex].ToString() ?? "Default Value";
             UpdateText();
+            // 重置滚动条到最开始
+            richTextBox1.Select(0, 0);
+            richTextBox1.ScrollToCaret();
         }
         //点击设置：加载上次的阅读状态
         private void button2_Click(object sender, EventArgs e)
@@ -359,6 +365,7 @@ namespace ReadTXT
                     this.toolStripComboBox1.Text = firstPattern.toolStripComboBox1Pattern;//语速
                     this.toolStripComboBox2.Text = firstPattern.toolStripComboBox2Pattern;//模式
                     this.toolStripStatusLabel4.Text = firstPattern.toolStripStatusLabel4Pattern;//上次阅读到的章节
+                    oldChapter=firstPattern.toolStripStatusLabel4Pattern??"";
                     // 创建新的 Font 对象
                     FontStyle fontStyle = (FontStyle)firstPattern.FontStyle;
                     Font newFont = new(
@@ -481,7 +488,7 @@ namespace ReadTXT
         private void UpdateText()
         {
             if (listBox1.SelectedIndex!=-1)
-            {                
+            {
                 object selectedItem = listBox1.Items[listBox1.SelectedIndex];
                 string selectedChapter = selectedItem.ToString() ?? "Default Value";
                 currentChapterTitle= selectedChapter;
@@ -645,5 +652,6 @@ namespace ReadTXT
             this.toolStripStatusLabel2.Text = "保存成功，路径："+ newFilePath;
             this.toolStripStatusLabel2.ForeColor = Color.Black;
         }
+
     }
 }
