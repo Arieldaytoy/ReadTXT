@@ -57,6 +57,7 @@
             toolStripButton3 = new ToolStripButton();
             toolStripSeparator1 = new ToolStripSeparator();
             toolStripButton4 = new ToolStripButton();
+            toolStripComboBox3 = new ToolStripComboBox();
             toolStripSeparator2 = new ToolStripSeparator();
             fontDialog1 = new FontDialog();
             colorDialog1 = new ColorDialog();
@@ -113,6 +114,7 @@
             richTextBox1.Size = new Size(593, 344);
             richTextBox1.TabIndex = 4;
             richTextBox1.Text = "";
+            
             // 
             // button2
             // 
@@ -205,7 +207,7 @@
             // 
             // toolStrip1
             // 
-            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripSplitButton1, toolStripLabel1, toolStripComboBox1, toolStripLabel2, toolStripComboBox2, toolStripSeparator3, toolStripLabel3, toolStripButton1, toolStripButton2, toolStripButton3, toolStripSeparator1, toolStripButton4, toolStripSeparator2 });
+            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripSplitButton1, toolStripLabel1, toolStripComboBox1, toolStripLabel2, toolStripComboBox2, toolStripSeparator3, toolStripLabel3, toolStripButton1, toolStripButton2, toolStripButton3, toolStripSeparator1, toolStripButton4, toolStripComboBox3, toolStripSeparator2 });
             toolStrip1.Location = new Point(0, 0);
             toolStrip1.Name = "toolStrip1";
             toolStrip1.Size = new Size(804, 25);
@@ -328,6 +330,13 @@
             toolStripButton4.Text = "保存";
             toolStripButton4.Click += toolStripButton4_Click;
             // 
+            // toolStripComboBox3
+            // 
+            toolStripComboBox3.Items.AddRange(new object[] { "覆盖保存", "另存带日期戳", "另存带时间戳" });
+            toolStripComboBox3.Name = "toolStripComboBox3";
+            toolStripComboBox3.Size = new Size(121, 25);
+            toolStripComboBox3.Text = "覆盖保存";
+            // 
             // toolStripSeparator2
             // 
             toolStripSeparator2.Name = "toolStripSeparator2";
@@ -447,5 +456,6 @@
         private ToolStripStatusLabel toolStripStatusLabel4;
         private ToolStripStatusLabel toolStripStatusLabel5;
         private ToolStripStatusLabel toolStripStatusLabel6;
+        private ToolStripComboBox toolStripComboBox3;
     }
 }

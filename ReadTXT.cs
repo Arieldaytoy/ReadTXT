@@ -158,7 +158,7 @@ namespace ReadTXT
 
         //定位到上次阅读章节
         private void SetListBoxSelectedItemByToolStripLabelText()
-        {           
+        {
             string ck = "0";
             if (oldChapter != "")
             {
@@ -266,7 +266,7 @@ namespace ReadTXT
                             chapterContent += lines[contentIndex] + Environment.NewLine;
                             contentIndex++;
                         }
-                        chapters[chapterTitle] =chapterTitle+ chapterContent;
+                        chapters[chapterTitle] =chapterTitle+ Environment.NewLine+ chapterContent;
                         j = contentIndex;
                     }
                     else
@@ -315,6 +315,11 @@ namespace ReadTXT
         private void button2_Click(object sender, EventArgs e)
         {
             Load_set();
+            if (oldChapter != "")
+            {
+                SetListBoxSelectedItemByToolStripLabelText();//定位到上次章节
+                UpdateText();
+            }
         }
 
         //保存设置：保存当前阅读设置
@@ -621,11 +626,20 @@ namespace ReadTXT
             string directory = Path.GetDirectoryName(originalFilePath);
             string fileName = Path.GetFileNameWithoutExtension(originalFilePath);
             string extension = Path.GetExtension(originalFilePath);
+            // 构建新的文件名
+            string newFileName = $"{fileName}{extension}";
             // 获取当前时间，并格式化
             DateTime now = DateTime.Now;
-            string timestamp = now.ToString("yyyyMMddHHmmss");
-            // 构建新的文件名
-            string newFileName = $"{fileName}-{timestamp}{extension}";
+            if (toolStripComboBox3.Text=="另存带日期戳")
+            {
+                string timestamp = now.ToString("yyyyMMdd");
+                newFileName = $"{fileName}-{timestamp}{extension}";
+            }
+            else if (toolStripComboBox3.Text=="另存带时间戳")
+            {
+                string timestamp = now.ToString("yyyyMMddHHmmss");
+                newFileName = $"{fileName}-{timestamp}{extension}";
+            }
             string newFilePath = Path.Combine(directory, newFileName);
             Encoding selectedEncoding = this.comboBox1.SelectedItem.ToString() switch
             {
