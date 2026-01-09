@@ -114,7 +114,6 @@
             richTextBox1.Size = new Size(593, 344);
             richTextBox1.TabIndex = 4;
             richTextBox1.Text = "";
-            
             // 
             // button2
             // 
@@ -164,7 +163,7 @@
             textBox2.PlaceholderText = "第\\d{4}章";
             textBox2.Size = new Size(96, 23);
             textBox2.TabIndex = 17;
-            textBox2.Text = "第\\d{4}章";
+            textBox2.Text = "第([一二两三四五六七八九十零百千万\\d]+)章";
             // 
             // label3
             // 
@@ -269,10 +268,10 @@
             // toolStripComboBox2
             // 
             toolStripComboBox2.AutoSize = false;
-            toolStripComboBox2.Items.AddRange(new object[] { "自动整行", "自动整章", "手动整行", "手动整章" });
+            toolStripComboBox2.Items.AddRange(new object[] { "整行", "整章" });
             toolStripComboBox2.Name = "toolStripComboBox2";
             toolStripComboBox2.Size = new Size(70, 25);
-            toolStripComboBox2.Text = "自动整行";
+            toolStripComboBox2.Text = "整行";
             // 
             // toolStripSeparator3
             // 

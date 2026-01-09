@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Speech.Synthesis;
 using System.Text;
 using System.Text.Json; // 或者使用 Newtonsoft.Json
@@ -15,6 +16,12 @@ namespace ReadTXT
         Dictionary<string, string> chapters = []; // 确保在循环前初始化字典       
         private string currentChapterTitle; // 当前正在编辑的章节标题
         private string oldChapter = "";
+
+        private int currentLineIndex = 0; // 添加当前行索引字段
+        private readonly bool isAutoLineMode = false;       
+        private bool waitForRealCompletion = false; // 新增：等待真实完成的标志
+        private readonly System.Windows.Forms.Timer completionTimer;
+
         public class BlackColor
         {
             public byte R { get; set; }
@@ -76,6 +83,41 @@ namespace ReadTXT
             this.textBox1.DragEnter += textBox1_DragEnter;
             this.textBox1.DragDrop += textBox1_DragDrop;
             synthesizer = new SpeechSynthesizer();
+            // 正确的事件订阅顺序
+            synthesizer.SpeakStarted += Synthesizer_SpeakStarted;
+            synthesizer.SpeakProgress += Synthesizer_SpeakProgress;
+            synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
+
+            // 设置音频输出设备
+            synthesizer.SetOutputToDefaultAudioDevice();
+
+            // 初始化 completionTimer
+            completionTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 10000 // 10秒超时
+            };
+            completionTimer.Tick += CompletionTimer_Tick; // 关联Tick事件
+        }
+        private void Synthesizer_SpeakStarted(object? sender, SpeakStartedEventArgs? e)
+        {
+            LogStatus("朗读真正开始");
+            waitForRealCompletion = true; // 标记开始等待真实完成
+        }
+        private void Synthesizer_SpeakProgress(object? sender, SpeakProgressEventArgs? e)
+        {
+            LogStatus($"朗读进度: '{e.Text}' (位置: {e.CharacterPosition})");
+        }
+
+        // Timer的Tick事件处理方法
+        private void CompletionTimer_Tick(object? sender, EventArgs? e)
+        {
+            completionTimer.Stop();
+            if (waitForRealCompletion && isSpeaking)
+            {
+                LogStatus("朗读超时，强制继续下一行");
+                waitForRealCompletion = false;
+                ProcessRealCompletion();
+            }
         }
 
         private void ReadTXT_Load(object sender, EventArgs e)
@@ -175,6 +217,8 @@ namespace ReadTXT
                 if (ck == "0") { this.toolStripStatusLabel2.Text = "你可能换了一本小说，找不到上次看的那章>_<"; }
             }
         }
+
+
         //DragEnter事件处理程序
         private void textBox1_DragEnter(object? sender, DragEventArgs e)
         {
@@ -417,180 +461,258 @@ namespace ReadTXT
             StartRead();
         }
 
-        private void StopRead()
-        {
-            isSpeaking = false; // 更新状态为不再朗读
-            this.toolStripStatusLabel2.Text = "已暂停朗读。";
-            this.toolStripStatusLabel2.ForeColor = Color.Black;
-            synthesizer.SpeakAsyncCancelAll();
-            synthesizer.SpeakCompleted -= Synthesizer_SpeakCompleted; // 取消订阅事件       
-        }
+        //开始朗读
         private void StartRead()
         {
             if (int.TryParse(this.toolStripComboBox1.Text, out int rate))
             {
                 synthesizer.Rate = rate;
             }
+
             if (!isSpeaking)
             {
-                isSpeaking = true; // 设置为正在朗读
-                this.toolStripStatusLabel2.Text = "正在朗读...";
-                this.toolStripStatusLabel2.ForeColor = Color.Black;
-                if (this.toolStripComboBox2.Text == "手动整章")
+                isSpeaking = true;
+                waitForRealCompletion = false;
+
+                currentLineIndex = 0;
+                this.toolStripStatusLabel6.Text = "0";
+
+                this.toolStripStatusLabel2.Text = "正在启动朗读...";
+
+                // 短暂延迟后开始，确保事件监听器就绪
+                Task.Delay(100).ContinueWith(_ =>
                 {
-                    synthesizer.SpeakAsync(this.richTextBox1.Text);
-                    synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
-                }
-                else if (this.toolStripComboBox2.Text == "手动整行")
+                    this.BeginInvoke(new Action(StartReadingCurrentLine));
+                });
+            }
+        }
+
+        //停止朗读
+        private void StopRead()
+        {
+            isSpeaking = false;
+            waitForRealCompletion = false;
+            completionTimer?.Stop();
+
+            synthesizer.SpeakAsyncCancelAll();
+            this.toolStripStatusLabel2.Text = "已停止";
+        }
+
+        //开始朗读当前行
+        private void StartReadingCurrentLine()
+        {
+            if (!isSpeaking) return;
+
+            // 重置状态
+            waitForRealCompletion = false;
+
+            // 启动超时计时器
+            completionTimer.Stop();
+            completionTimer.Start();
+
+            // 重置完成等待标志
+            waitForRealCompletion = false;
+
+            if (currentLineIndex >= richTextBox1.Lines.Length)
+            {
+                ChapterCompleted();
+                return;
+            }
+
+            string lineText = richTextBox1.Lines[currentLineIndex];
+
+            if (string.IsNullOrWhiteSpace(lineText))
+            {
+                // 空行处理
+                currentLineIndex++;
+                this.toolStripStatusLabel6.Text = currentLineIndex.ToString();
+                this.BeginInvoke(new Action(StartReadingCurrentLine));
+                return;
+            }
+
+            HighlightCurrentLine(Color.Red);
+
+            // 使用Prompt对象而不是直接传字符串，提高稳定性
+            Prompt prompt = new(lineText);
+
+            try
+            {
+                synthesizer.SpeakAsync(prompt);
+                LogStatus($"开始异步朗读行 {currentLineIndex}");
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"朗读出错: {ex.Message}");
+                // 出错时也继续下一行，避免卡死
+                ProcessRealCompletion();
+            }
+        }
+
+
+        // 高亮当前行的方法
+        private void HighlightCurrentLine(Color color)
+        {
+            if (currentLineIndex < richTextBox1.Lines.Length)
+            {
+                int startIndex = richTextBox1.GetFirstCharIndexFromLine(currentLineIndex);
+                if (startIndex >= 0)
                 {
-                    SetRichTextBoxTextColor(richTextBox1, Color.Red, "1");
-                    synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
-                }
-                else if (this.toolStripComboBox2.Text == "自动整章")
-                {
-                    synthesizer.SpeakAsync(this.richTextBox1.Text);
-                    synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
-                }
-                else if (this.toolStripComboBox2.Text == "自动整行")
-                {
-                    SetRichTextBoxTextColor(richTextBox1, Color.Red, "1");
-                    synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
+                    int length;
+                    if (currentLineIndex < richTextBox1.Lines.Length - 1)
+                    {
+                        int nextIndex = richTextBox1.GetFirstCharIndexFromLine(currentLineIndex + 1);
+                        length = nextIndex - startIndex;
+                    }
+                    else
+                    {
+                        length = richTextBox1.Text.Length - startIndex;
+                    }
+
+                    // 清除所有高亮
+                    richTextBox1.SelectAll();
+                    richTextBox1.SelectionColor = Color.Black;
+
+                    // 高亮当前行
+                    richTextBox1.Select(startIndex, length);
+                    richTextBox1.SelectionColor = color;
+
+                    // 滚动到可见区域
+                    richTextBox1.ScrollToCaret();
+                    richTextBox1.DeselectAll();
                 }
             }
         }
 
-        //获取下一章目录
+        // 关键修复：正确的完成事件处理
+        private void Synthesizer_SpeakCompleted(object? sender, SpeakCompletedEventArgs? e)
+        {
+            LogStatus("SpeakCompleted事件触发");
+
+            // 只有当我们真正开始朗读后才处理完成事件
+            if (waitForRealCompletion && isSpeaking)
+            {
+                waitForRealCompletion = false;
+                ProcessRealCompletion();
+            }
+        }
+        private void ProcessRealCompletion()
+        {
+            completionTimer.Stop(); // 停止超时计时器
+            if (!isSpeaking) return;
+
+            LogStatus("检测到真实朗读完成");
+
+            if (this.toolStripComboBox2.Text == "整行")
+            {
+                // 整行模式：处理下一行
+                currentLineIndex++;
+                this.toolStripStatusLabel6.Text = currentLineIndex.ToString();
+
+                if (currentLineIndex < richTextBox1.Lines.Length)
+                {
+                    // 短暂延迟后继续下一行
+                    Task.Delay(300).ContinueWith(_ =>
+                    {
+                        this.BeginInvoke(new Action(StartReadingCurrentLine));
+                    });
+                }
+                else
+                {
+                    // 章节结束
+                    ChapterCompleted();
+                }
+            }
+        }
+
+        // 切换到下一章
         private void GoToNextChapter()
         {
             if (listBox1.SelectedIndex >= 0)
             {
-                // 获取选中的项
-                string selectedItem = listBox1.Items[listBox1.SelectedIndex].ToString() ?? "Default Value";
-                // 获取当前选中项的索引
                 int selectedIndex = listBox1.SelectedIndex;
-                // 检查是否不是最后一个项
                 if (selectedIndex < listBox1.Items.Count - 1)
                 {
-                    // 获取下一个项的索引
                     int nextItemIndex = selectedIndex + 1;
                     listBox1.SelectedIndex = nextItemIndex;
-                    this.toolStripStatusLabel4.Text = selectedItem;
-                    synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
-                }
-                else
-                {
-                    synthesizer.SpeakAsyncCancelAll();
-                    isSpeaking = false; // 更新状态为不再朗读
-                    this.toolStripStatusLabel2.Text = "全文完。";
-                    this.toolStripStatusLabel2.ForeColor = Color.Black;
-                    for (int i = 0; i < 5; i++)
-                    {
-                        synthesizer.SpeakCompleted -= Synthesizer_SpeakCompleted;
-                    }
-                }
-            }
-        }
-        private void UpdateText()
-        {
-            if (listBox1.SelectedIndex!=-1)
-            {
-                object selectedItem = listBox1.Items[listBox1.SelectedIndex];
-                string selectedChapter = selectedItem.ToString() ?? "Default Value";
-                currentChapterTitle= selectedChapter;
-                if (chapters.TryGetValue(currentChapterTitle, out string? value))
-                {
-                    this.richTextBox1.Text = value;
-                    this.toolStripStatusLabel6.Text="0";
-                }
-            }
-        }
-        //朗读结束后的事件处理
-        private void Synthesizer_SpeakCompleted(object? sender, SpeakCompletedEventArgs e)
-        {
-
-            synthesizer.SpeakCompleted -= Synthesizer_SpeakCompleted; // 取消订阅事件
-            isSpeaking = false; // 重置为不在朗读状态
-
-            if (this.toolStripComboBox2.Text == "手动整章")
-            {
-                this.toolStripStatusLabel2.Text = "本章结束，请手动点下一章。";
-            }
-            else if (this.toolStripComboBox2.Text == "手动整行")
-            {
-                this.toolStripStatusLabel2.Text = "本行结束，请手动点下一行。";
-            }
-            else if (this.toolStripComboBox2.Text == "自动整章")
-            {
-                GoToNextChapter();
-                UpdateText();
-                synthesizer.SpeakAsync(this.richTextBox1.Text);
-            }
-            else if (this.toolStripComboBox2.Text == "自动整行")
-            {
-                SetRichTextBoxTextColor(richTextBox1, Color.Red, "1");
-                if (this.toolStripStatusLabel2.Text == "本章结束。")
-                {
-                    GoToNextChapter();
+                    this.toolStripStatusLabel4.Text = listBox1.Items[nextItemIndex].ToString() ?? "Default Value";
                     UpdateText();
                 }
                 else
                 {
-                    synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
+                    StopRead();
+                    this.toolStripStatusLabel2.Text = "全文完。";
+                    this.toolStripStatusLabel2.ForeColor = Color.Black;
                 }
-
             }
         }
-        // 确保在表单关闭时释放资源
-        protected override void OnFormClosed(FormClosedEventArgs e)
+
+        
+
+        // 章节完成处理
+        private void ChapterCompleted()
         {
-            base.OnFormClosed(e);
-            synthesizer.Dispose();
-        }
-        //改变朗读行字体红色
-        private void SetRichTextBoxTextColor(RichTextBox richTextBox, Color color, string spk)
-        {
-            // 获取所有行的数量
-            int lineCount = richTextBox.Lines.Length;
-            this.toolStripStatusLabel6.Text ??= "0";
-            int i = int.Parse(this.toolStripStatusLabel6.Text); // 将字符串转换为整数    
-            int startIndex = richTextBox.GetFirstCharIndexFromLine(i);
-            int length;
-            if (i < lineCount - 1 && startIndex != -1)
+            if (isAutoLineMode && isSpeaking)
             {
-                int nextIndex = richTextBox.GetFirstCharIndexFromLine(i + 1);
-                length = nextIndex - startIndex;// 获取当前行的长度（包括行尾的换行符）                
-                i += 1;
+                // 自动进入下一章
+                GoToNextChapter();
+                if (isSpeaking)
+                {
+                    // 短暂延迟后开始新章节
+                    Task.Delay(500).ContinueWith(_ =>
+                    {
+                        this.BeginInvoke(new Action(() =>
+                        {
+                            currentLineIndex = 0;
+                            this.toolStripStatusLabel6.Text = "0";
+                            StartReadingCurrentLine();
+                        }));
+                    });
+                }
             }
             else
             {
-                startIndex = 0;
-                length = richTextBox.Text.Length;// 获取当前行的长度（包括行尾的换行符）
-            }
-            this.toolStripStatusLabel6.Text = i.ToString();
-            //朗读字体设置为红色
-            richTextBox.Select(startIndex, length);
-            richTextBox.SelectionColor = color;
-            string txt = richTextBox.SelectedText;
-            // 取消选择，避免用户看到选择区域 
-            richTextBox.DeselectAll();
-            if (length - richTextBox.Text.Length == 0 && spk == "1")//最后一行
-            {
-                txt = richTextBox.Lines[lineCount - 1];
-            }
-            if (spk == "1")
-            {
                 isSpeaking = false;
-                if (!isSpeaking)
+                this.toolStripStatusLabel2.Text = "朗读完成";
+            }
+        }
+
+        // 修改UpdateText方法
+        private void UpdateText()
+        {
+            if (listBox1.SelectedIndex != -1)
+            {
+                object selectedItem = listBox1.Items[listBox1.SelectedIndex];
+                string selectedChapter = selectedItem.ToString() ?? "Default Value";
+                currentChapterTitle = selectedChapter;
+                if (chapters.TryGetValue(currentChapterTitle, out string value))
                 {
-                    isSpeaking = true; // 设置为正在朗读
-                    this.toolStripStatusLabel2.Text = "正在朗读...";
-                    this.toolStripStatusLabel2.ForeColor = Color.Black;
-                    if (length - richTextBox.Text.Length == 0 && spk == "1")
+                    this.richTextBox1.Text = value;
+                    currentLineIndex = 0;
+                    this.toolStripStatusLabel6.Text = "0";
+
+                    // 重置文本颜色
+                    richTextBox1.SelectAll();
+                    richTextBox1.SelectionColor = Color.Black;
+                    richTextBox1.DeselectAll();
+                }
+            }
+        }
+
+        // 修改SetRichTextBoxTextColor方法
+        private void SetRichTextBoxTextColor(RichTextBox richTextBox, Color color, string spk)
+        {
+            HighlightCurrentLine(color);
+
+            if (spk == "1" && isSpeaking)
+            {
+                int lineIndex = currentLineIndex;
+                if (lineIndex < richTextBox.Lines.Length)
+                {
+                    string lineText = richTextBox.Lines[lineIndex];
+                    if (!string.IsNullOrWhiteSpace(lineText))
                     {
-                        this.toolStripStatusLabel2.Text = "本章结束。";
-                        this.toolStripStatusLabel2.ForeColor = Color.Black;
+                        synthesizer.SpeakAsync(lineText);
                     }
-                    synthesizer.SpeakAsync(txt);
                 }
             }
         }
@@ -665,6 +787,31 @@ namespace ReadTXT
             }
             this.toolStripStatusLabel2.Text = "保存成功，路径："+ newFilePath;
             this.toolStripStatusLabel2.ForeColor = Color.Black;
+        }
+
+        // 添加日志输出
+        private void LogStatus(string message)
+        {
+            string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+            string logMessage = $"{timestamp} - {message}";
+            Debug.WriteLine($"{logMessage}");
+
+            // 可选：在界面显示最后几条日志
+            this.BeginInvoke(new Action(() =>
+            {
+                if (this.toolStripStatusLabel2.Text.Length > 200)
+                    this.toolStripStatusLabel2.Text = "";
+                this.toolStripStatusLabel2.Text += logMessage + Environment.NewLine;
+            }));
+        }
+
+
+        // 确保在表单关闭时释放资源
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            base.OnFormClosed(e);
+            synthesizer.Dispose();
+            completionTimer?.Dispose(); // 添加这行
         }
 
     }
