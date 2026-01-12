@@ -402,6 +402,7 @@
             Controls.Add(button1);
             Controls.Add(textBox1);
             Controls.Add(label1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             MinimumSize = new Size(820, 510);
             Name = "ReadTXT";
             Text = "ReadTXT";
