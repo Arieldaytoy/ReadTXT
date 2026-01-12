@@ -924,5 +924,9 @@ namespace ReadTXT
             completionTimer?.Dispose(); // ÃÌº”’‚––
         }
 
+        private void label3_Click(object sender, EventArgs e)
+        {
+            this.textBox2.Text=this.textBox2.PlaceholderText;
+        }
     }
 }

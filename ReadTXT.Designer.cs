@@ -173,6 +173,7 @@
             label3.Size = new Size(56, 17);
             label3.TabIndex = 16;
             label3.Text = "章节规则";
+            label3.Click += label3_Click;
             // 
             // comboBox1
             // 
