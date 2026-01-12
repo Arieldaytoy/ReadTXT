@@ -18,7 +18,7 @@ namespace ReadTXT
         private string oldChapter = "";
 
         private int currentLineIndex = 0; // 添加当前行索引字段
-        private readonly bool isAutoLineMode = false;
+        private  bool isAutoLineMode = false;
         private bool waitForRealCompletion = false; // 新增：等待真实完成的标志
         private readonly System.Windows.Forms.Timer completionTimer;
 
@@ -519,6 +519,12 @@ namespace ReadTXT
                             HighlightCurrentLine(Color.Red);
                             isResuming = false;
                         }
+                        else
+                        {
+                            // 从头开始，先高亮第一行
+                            HighlightCurrentLine(Color.Red);
+                        }
+
                         StartReadingCurrentLine();
                     }));
                 });
@@ -671,30 +677,35 @@ namespace ReadTXT
 
             if (this.toolStripComboBox2.Text == "整行")
             {
-                // 整行模式：处理下一行
-                currentLineIndex++;
-                this.toolStripStatusLabel6.Text = currentLineIndex.ToString();
+                // 检查是否是当前章节的最后一行
+                bool isLastLine = currentLineIndex >= richTextBox1.Lines.Length - 1;
 
-                if (currentLineIndex < richTextBox1.Lines.Length)
+                if (isLastLine)
                 {
+                    // 如果是最后一行，表示本章节结束
+                    // 注意：这里不设置isSpeaking为false，让ChapterCompleted处理
+                    ChapterCompleted();
+                }
+                else
+                {
+                    // 不是最后一行，继续下一行
+                    currentLineIndex++;
+                    this.toolStripStatusLabel6.Text = currentLineIndex.ToString();
+
                     // 短暂延迟后继续下一行
                     Task.Delay(300).ContinueWith(_ =>
                     {
                         this.BeginInvoke(new Action(() =>
                         {
-                            // 记录下一行的信息（调试用）
-                            LogCurrentLineInfo();
+                            // 先高亮下一行，再开始朗读
+                            HighlightCurrentLine(Color.Red);
                             StartReadingCurrentLine();
                         }));
                     });
                 }
-                else
-                {
-                    // 章节结束
-                    ChapterCompleted();
-                }
             }
         }
+
         private void LogCurrentLineInfo()
         {
             if (currentLineIndex < richTextBox1.Lines.Length)
@@ -707,7 +718,7 @@ namespace ReadTXT
             }
         }
         // 切换到下一章
-        private void GoToNextChapter()
+        private bool GoToNextChapter()
         {
             if (listBox1.SelectedIndex >= 0)
             {
@@ -718,43 +729,57 @@ namespace ReadTXT
                     listBox1.SelectedIndex = nextItemIndex;
                     this.toolStripStatusLabel4.Text = listBox1.Items[nextItemIndex].ToString() ?? "Default Value";
                     UpdateText();
+                    return true; // 成功切换到下一章
                 }
                 else
                 {
-                    StopRead();
-                    this.toolStripStatusLabel2.Text = "全文完。";
-                    this.toolStripStatusLabel2.ForeColor = Color.Black;
+                    // 已经是最后一章，停止朗读
+                    // 注意：这里不设置isSpeaking为false，让ChapterCompleted处理
+                    return false; // 已经是最后一章
                 }
             }
+            return false; // 没有选中任何章节
         }
-
-
 
         // 章节完成处理
         private void ChapterCompleted()
         {
-            if (isAutoLineMode && isSpeaking)
+            // 如果当前是整行模式，自动跳转到下一章
+            if (this.toolStripComboBox2.Text == "整行")
             {
-                // 自动进入下一章
-                GoToNextChapter();
-                if (isSpeaking)
+                // 尝试切换到下一章
+                if (GoToNextChapter())
                 {
+                    // 切换到下一章成功，继续朗读
+                    // 注意：这里不检查isSpeaking，因为我们需要强制开始朗读
+
                     // 短暂延迟后开始新章节
-                    Task.Delay(500).ContinueWith(_ =>
+                    Task.Delay(300).ContinueWith(_ =>
                     {
                         this.BeginInvoke(new Action(() =>
                         {
-                            currentLineIndex = 0;
-                            this.toolStripStatusLabel6.Text = "0";
-                            StartReadingCurrentLine();
+                            // 重置朗读状态，确保可以开始新的朗读
+                            isSpeaking = false; // 重置为false，让StartRead能够正常工作
+                            waitForRealCompletion = false;
+                            completionTimer?.Stop();
+
+                            // 新章节从头开始朗读
+                            StartReadFromBeginning();
                         }));
                     });
+                }
+                else
+                {
+                    // 已经是最后一章，停止朗读
+                    isSpeaking = false;
+                    this.toolStripStatusLabel2.Text = "全文朗读完成";
                 }
             }
             else
             {
+                // 其他模式，只完成本章朗读
                 isSpeaking = false;
-                this.toolStripStatusLabel2.Text = "朗读完成";
+                this.toolStripStatusLabel2.Text = "本章朗读完成";
             }
         }
 
