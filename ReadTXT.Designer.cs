@@ -160,7 +160,7 @@
             // 
             textBox2.Location = new Point(68, 23);
             textBox2.Name = "textBox2";
-            textBox2.PlaceholderText = "第\\d{4}章";
+            textBox2.PlaceholderText = "第([一二两三四五六七八九十零百千万\\d]+)章";
             textBox2.Size = new Size(96, 23);
             textBox2.TabIndex = 17;
             textBox2.Text = "第([一二两三四五六七八九十零百千万\\d]+)章";
