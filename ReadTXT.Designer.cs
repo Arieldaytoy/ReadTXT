@@ -268,7 +268,7 @@
             // toolStripComboBox2
             // 
             toolStripComboBox2.AutoSize = false;
-            toolStripComboBox2.Items.AddRange(new object[] { "整行", "整章" });
+            toolStripComboBox2.Items.AddRange(new object[] { "整行" });
             toolStripComboBox2.Name = "toolStripComboBox2";
             toolStripComboBox2.Size = new Size(70, 25);
             toolStripComboBox2.Text = "整行";
