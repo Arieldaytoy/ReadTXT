@@ -1,66 +1,137 @@
 using System.Diagnostics;
 using System.Speech.Synthesis;
 using System.Text;
-using System.Text.Json; // 或者使用 Newtonsoft.Json
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-
-
+using Timer = System.Windows.Forms.Timer;
 
 namespace ReadTXT
 {
     public partial class ReadTXT : Form
     {
-        private readonly SpeechSynthesizer synthesizer = new();
-        private bool isSpeaking = false; // 用于跟踪是否正在朗读
-        Dictionary<string, string> chapters = []; // 确保在循环前初始化字典       
-        private string currentChapterTitle; // 当前正在编辑的章节标题
-        private string oldChapter = "";
+        #region 自定义变量
+        private Dictionary<string, string> chapters = [];
 
-        private int currentLineIndex = 0; // 添加当前行索引字段
-        private  bool isAutoLineMode = false;
-        private bool waitForRealCompletion = false; // 新增：等待真实完成的标志
-        private readonly System.Windows.Forms.Timer completionTimer;
+        private string currentChapterTitle;
+        private int currentLineIndex = 0;
 
-        private int pauseLineIndex = -1; // 新增：记录暂停时的行位置
-        private bool isResuming = false; // 新增：是否正在恢复朗读
+        private string previousChapter = "";
+        private int pauseLineIndex = -1;
+
+        //朗读相关
+        private SpeechSynthesizer synthesizer = new();
+        private bool isSpeaking = false;//是否开启朗读标识
+        private bool waitForRealCompletion = false;//朗读状态
+        private bool isResuming = false;//朗读暂停标识
+        private Timer completionTimer;
+
+
+        // 迷你模式窗口
+        public MiniModeForm? miniModeForm = null;
+        public bool isMinimizedToTray = false;
+        public bool IsMinimizedToTray => isMinimizedToTray;
+
+        private PatternItem patternConfig;
+        private HotkeyManager hotkeyManager;
+
+        // 添加全局键盘钩子
+
+        private GlobalKeyboardHook? keyboardHook = null;
+        //private DateTime lastKeyPressTime = DateTime.MinValue;
+        //private Keys lastKeyCode = Keys.None;
+        //private bool isKeyProcessed = false;
+
+        // 快捷键处理标志
+        //private bool isProcessingHotkey = false;
+
+        // 切换方法，添加状态标志避免竞态条件
+        public bool isSwitchingMode = false;
 
         public class BlackColor
         {
+            [JsonPropertyName("r")]
             public byte R { get; set; }
+
+            [JsonPropertyName("g")]
             public byte G { get; set; }
+
+            [JsonPropertyName("b")]
             public byte B { get; set; }
+
+            [JsonPropertyName("a")]
             public byte A { get; set; }
-            // 其他属性可能不需要，除非您有特定的用途
-            [JsonIgnore] // 如果您不希望这个属性被序列化回 JSON，可以使用 JsonIgnore
+
+            [JsonIgnore]
             public Color Color => Color.FromArgb(A, R, G, B);
         }
-        // 定义与JSON结构相匹配的类
+
         public class PatternItem
         {
-            public string? textBox1Pattern { get; set; }
-            public string? textBox2Pattern { get; set; }
-            public string? toolStripComboBox1Pattern { get; set; }
-            public string? toolStripComboBox2Pattern { get; set; }
-            public string? toolStripStatusLabel4Pattern { get; set; }
+            [JsonPropertyName("txtPathTextBoxPattern")]
+            public string? TXTPath_textBoxPattern { get; set; }
+
+            [JsonPropertyName("ruleTextBoxPattern")]
+            public string? Rule_textBoxPattern { get; set; }
+
+            [JsonPropertyName("speedToolStripComboBoxPattern")]
+            public string? Speed_toolStripComboBoxPattern { get; set; }
+
+            [JsonPropertyName("readModeToolStripComboBoxPattern")]
+            public string? ReadMode_toolStripComboBoxPattern { get; set; }
+
+            [JsonPropertyName("currentChapterToolStripStatusLabelPattern")]
+            public string? CurrentChapter_toolStripStatusLabelPattern { get; set; }
+
+            [JsonPropertyName("currentLineToolStripStatusLabelPattern")]
+            public string? CurrentLine_toolStripStatusLabelPattern { get; set; }
+
+            [JsonPropertyName("fontName")]
             public string? FontName { get; set; }
+
+            [JsonPropertyName("fontStyle")]
             public int FontStyle { get; set; }
+
+            [JsonPropertyName("fontSize")]
             public double FontSize { get; set; }
+
+            [JsonPropertyName("blackColor")]
             public required BlackColor BlackColor { get; set; }
 
+            [JsonPropertyName("hotkeysForJson")]
+            public Dictionary<string, string> HotkeysForJson { get; set; } = new()
+            {
+                { "ToggleMode", "Ctrl+Alt+M" },
+                { "MinimizeOrClose", "Ctrl+Alt+X" },
+                { "ToggleTopMost", "Ctrl+Alt+T" },
+                { "StartReading", "Ctrl+Alt+K" },
+                { "StopReading", "Ctrl+Alt+Z" },
+                { "NextChapter", "Ctrl+Alt+N" },
+                { "SaveDocument", "Ctrl+Alt+S" }
+            };
+
+            // 这个属性用于代码内部使用，不直接序列化
+            [JsonIgnore]
+            public Dictionary<string, string> Hotkeys
+            {
+                get => HotkeysForJson;
+                set => HotkeysForJson = value;
+            }
         }
-        // 添加一个方法来读取JSON文件
+
         public class PatternsContainer
         {
+            [JsonPropertyName("patterns")]
             public required PatternItem[] Patterns { get; set; }
         }
+
         private static PatternsContainer? ReadJsonPatterns(string filePath)
         {
             try
             {
                 string jsonContent = File.ReadAllText(filePath);
-                return JsonSerializer.Deserialize<PatternsContainer>(jsonContent);
-                // 如果使用Json.NET，则使用 JsonConvert.DeserializeObject<PatternsContainer>(jsonContent)
+                // 使用相同的序列化选项
+                return JsonSerializer.Deserialize<PatternsContainer>(jsonContent, _serializerOptions);
             }
             catch (Exception ex)
             {
@@ -68,84 +139,391 @@ namespace ReadTXT
                 return null;
             }
         }
-        // 静态的 JsonSerializerOptions 实例，用于缓存和重用
+
         private static readonly JsonSerializerOptions _serializerOptions = new()
         {
-            WriteIndented = true
+            WriteIndented = true,
+            // 使序列化时属性名使用驼峰命名
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            // 使反序列化时不区分大小写
+            PropertyNameCaseInsensitive = true
         };
-        // 公共方法，用于序列化对象
+
         public static string SerializeObject<T>(T obj)
         {
             return JsonSerializer.Serialize(obj, _serializerOptions);
         }
 
+        #endregion
+
+        #region 窗体初始化配置
         public ReadTXT()
         {
             InitializeComponent();
-            this.textBox1.AllowDrop = true;
-            this.textBox1.DragEnter += textBox1_DragEnter;
-            this.textBox1.DragDrop += textBox1_DragDrop;
-            synthesizer = new SpeechSynthesizer();
-            // 正确的事件订阅顺序
-            synthesizer.SpeakStarted += Synthesizer_SpeakStarted;
-            synthesizer.SpeakProgress += Synthesizer_SpeakProgress;
-            synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
-
-            // 设置音频输出设备
-            synthesizer.SetOutputToDefaultAudioDevice();
-
-            // 初始化 completionTimer
-            completionTimer = new System.Windows.Forms.Timer
-            {
-                Interval = 10000 // 10秒超时
-            };
-            completionTimer.Tick += CompletionTimer_Tick; // 关联Tick事件
-        }
-        private void Synthesizer_SpeakStarted(object? sender, SpeakStartedEventArgs? e)
-        {
-            //LogStatus("朗读真正开始");
-            waitForRealCompletion = true; // 标记开始等待真实完成
-        }
-        private void Synthesizer_SpeakProgress(object? sender, SpeakProgressEventArgs? e)
-        {
-            LogStatus($"朗读进度: '{e.Text}' (位置: {e.CharacterPosition})");
+            InitializeSynthesizer();
         }
 
-        // Timer的Tick事件处理方法
-        private void CompletionTimer_Tick(object? sender, EventArgs? e)
-        {
-            completionTimer.Stop();
-            if (waitForRealCompletion && isSpeaking)
-            {
-                LogStatus("朗读超时，强制继续下一行");
-                waitForRealCompletion = false;
-                ProcessRealCompletion();
-            }
-        }
-
+        /// <summary>
+        /// 初始化窗体
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void ReadTXT_Load(object sender, EventArgs e)
         {
+            this.Resize += ReadTXT_Resize;
             LoadTTSVoices();
-            Load_set();//读取上次的设置
-            Analyze_novel();//解析小说
-            SetListBoxSelectedItemByToolStripLabelText();//定位到上次章节
-            // 初始化时设置文本颜色
-            SetRichTextBoxTextColor(richTextBox1, Color.Black, "0");
-            //读取朗读速度，如果速度不合规设置为默认值=0
-            if (int.TryParse(this.toolStripComboBox1.Text, out int rate))
+            Load_set();
+            InitializeHotkeys(); // 初始化热键管理器            
+            Analyze_novel();
+            RestorePreviousChapterSelection();
+            SetRichTextBoxTextColor(ChapterContent_richTextBox, Color.Black, "0");
+
+            if (int.TryParse(this.Speed_toolStripComboBox.Text, out int rate))
             {
                 synthesizer.Rate = rate;
             }
             else
             {
-                // 处理转换失败的情况，例如使用默认语速
-                this.toolStripComboBox1.Text = "0";
-                synthesizer.Rate = 0; // 或者设置为其他你认为合适的默认值
-                this.toolStripStatusLabel2.Text = "朗读速度只能设置-10~10的整数！！！";
-                this.toolStripStatusLabel2.ForeColor = Color.Red;
+                this.Speed_toolStripComboBox.Text = "0";
+                synthesizer.Rate = 0;
+                this.LogStatus_toolStripStatusLabel.Text = "朗读速度只能设置-10~10的整数！！！";
+                this.LogStatus_toolStripStatusLabel.ForeColor = Color.Red;
             }
         }
-        //加载已安装语音包
+
+        #endregion
+        
+        #region 热键管理器初始化
+        private void InitializeHotkeys()
+        {
+            // 确保patternConfig已加载
+            if (patternConfig == null)
+            {
+                // 如果配置为空，创建默认配置
+                patternConfig = new PatternItem
+                {
+                    BlackColor = new BlackColor { R = 255, G = 255, B = 255, A = 255 },
+                    Hotkeys = new Dictionary<string, string>
+            {
+                { "ToggleMode", "Ctrl+Alt+M" },
+                { "MinimizeOrClose", "Ctrl+Alt+X" },
+                { "ToggleTopMost", "Ctrl+Alt+T" },
+                { "StartReading", "Ctrl+Alt+K" },
+                { "StopReading", "Ctrl+Alt+Z" },
+                { "NextChapter", "Ctrl+Alt+N" },
+                { "SaveDocument", "Ctrl+Alt+S" }
+            }
+                };
+            }
+
+            // 初始化热键管理器
+            hotkeyManager = new HotkeyManager(this, patternConfig);
+
+            // 初始化全局键盘钩子
+            keyboardHook = new GlobalKeyboardHook();
+            keyboardHook.HotkeyPressed += (s, e) =>
+            {
+                if (hotkeyManager != null)
+                {
+                    bool handled = hotkeyManager.ProcessHotkey(e.HotkeyString);
+                    e.Handled = handled;
+
+                    if (handled)
+                    {
+                        Debug.WriteLine($"热键触发: {e.HotkeyString}");
+                    }
+                }
+            };
+
+            // 注册应用程序关闭时清理钩子
+            Application.ApplicationExit += (s, e) =>
+            {
+                keyboardHook?.Dispose();
+            };
+        }
+        #endregion
+
+        
+
+        #region 工具栏按钮事件
+
+        #region 工具栏按钮-设置相关事件
+        //设置背景色
+        private void 背景色ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (colorDialog1.ShowDialog() == DialogResult.OK)
+            {
+                Color selectedColor = colorDialog1.Color;
+                this.ChapterContent_richTextBox.BackColor = selectedColor;
+                this.Chapter_listBox.BackColor = selectedColor;
+            }
+        }
+        //设置字体
+        private void 字体ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (fontDialog1.ShowDialog() == DialogResult.OK)
+            {
+                Font selectedFont = fontDialog1.Font;
+                ChapterContent_richTextBox.Font = selectedFont;
+            }
+        }
+        #endregion
+
+        #region 工具栏-朗读操作-暂停、开始、下一章
+        //暂停朗读
+        private void Pause_toolStripButton_Click(object sender, EventArgs e)
+        {
+            StopRead();
+        }
+        //开始朗读
+        private void Start_toolStripButton_Click(object sender, EventArgs e)
+        {
+            StopRead();
+            StartRead();
+        }
+        // 下一章朗读
+        private void NextChapter_toolStripButton_Click(object? sender, EventArgs? e)
+        {
+            StopRead();
+            GoToNextChapter();
+            StartReadFromBeginning(); // 切换到新章节时从头开始
+        }
+        #endregion
+
+        #region 工具栏-保存按钮
+        //保存编辑后全文
+        public void Save_toolStripButton_Click(object? sender, EventArgs? e)
+        {
+            string originalFilePath = this.TXTPath_textBox.Text;
+            string directory = Path.GetDirectoryName(originalFilePath);
+            string fileName = Path.GetFileNameWithoutExtension(originalFilePath);
+            string extension = Path.GetExtension(originalFilePath);
+
+            string newFileName = $"{fileName}{extension}";
+            DateTime now = DateTime.Now;
+
+            if (Save_toolStripComboBox.Text == "另存带日期戳")
+            {
+                string timestamp = now.ToString("yyyyMMdd");
+                newFileName = $"{fileName}-{timestamp}{extension}";
+            }
+            else if (Save_toolStripComboBox.Text == "另存带时间戳")
+            {
+                string timestamp = now.ToString("yyyyMMddHHmmss");
+                newFileName = $"{fileName}-{timestamp}{extension}";
+            }
+
+            string newFilePath = Path.Combine(directory, newFileName);
+            Encoding selectedEncoding = this.Code_comboBox.SelectedItem.ToString() switch
+            {
+                "UTF-8" => Encoding.UTF8,
+                "UTF-8 BOM" => new UTF8Encoding(true),
+                "ANSI" => Encoding.Default,
+                _ => Encoding.UTF8,
+            };
+
+            if (!string.IsNullOrEmpty(currentChapterTitle))
+            {
+                chapters[currentChapterTitle] = this.ChapterContent_richTextBox.Text;
+                using StreamWriter writer = new(newFilePath, false, selectedEncoding);
+                foreach (var chapter in chapters)
+                {
+                    writer.Write(chapter.Value);
+                    writer.WriteLine();
+                }
+            }
+            else
+            {
+                using StreamWriter writer = new(newFilePath, false, selectedEncoding);
+                writer.Write(this.ChapterContent_richTextBox.Text);
+            }
+            this.LogStatus_toolStripStatusLabel.Text = "保存成功，路径：" + newFilePath;
+            this.LogStatus_toolStripStatusLabel.ForeColor = Color.Black;
+        }
+        #endregion
+
+        #endregion
+
+        #region 设置规则组按钮事件
+        //点击标签加载默认规则
+        private void Rule_label_Click(object sender, EventArgs e)
+        {
+            this.Rule_textBox.Text = this.Rule_textBox.PlaceholderText;
+        }
+
+        //加载用户设置
+        private void LoadSet_button_Click(object sender, EventArgs e)
+        {
+            Load_set();
+            if (previousChapter != "")
+            {
+                RestorePreviousChapterSelection();
+                UpdateText();
+            }
+        }
+
+        // 保存用户设置
+        private void Set_button_Click(object sender, EventArgs e)
+        {
+            // 如果patternConfig为空，创建新的
+            if (patternConfig == null)
+            {
+                patternConfig = new PatternItem
+                {
+                    BlackColor = new BlackColor { R = 255, G = 255, B = 255, A = 255 }
+                };
+            }
+
+            // 更新配置
+            patternConfig.TXTPath_textBoxPattern = this.TXTPath_textBox.Text;
+            patternConfig.Rule_textBoxPattern = this.Rule_textBox.Text;
+            patternConfig.Speed_toolStripComboBoxPattern = this.Speed_toolStripComboBox.Text;
+            patternConfig.ReadMode_toolStripComboBoxPattern = this.ReadMode_toolStripComboBox.Text;
+            patternConfig.CurrentChapter_toolStripStatusLabelPattern = this.CurrentChapter_toolStripStatusLabel.Text;
+            patternConfig.CurrentLine_toolStripStatusLabelPattern = this.CurrentLine_toolStripStatusLabel.Text;
+            patternConfig.FontName = this.ChapterContent_richTextBox.Font.Name;
+            patternConfig.FontStyle = (int)this.ChapterContent_richTextBox.Font.Style;
+            patternConfig.FontSize = this.ChapterContent_richTextBox.Font.Size;
+            patternConfig.BlackColor.R = this.ChapterContent_richTextBox.BackColor.R;
+            patternConfig.BlackColor.G = this.ChapterContent_richTextBox.BackColor.G;
+            patternConfig.BlackColor.B = this.ChapterContent_richTextBox.BackColor.B;
+            patternConfig.BlackColor.A = this.ChapterContent_richTextBox.BackColor.A;
+
+            // 确保HotkeysForJson字典存在
+            if (patternConfig.HotkeysForJson == null)
+            {
+                patternConfig.HotkeysForJson = new Dictionary<string, string>();
+            }
+
+            // 保存热键配置（从文本框获取当前设置）
+            patternConfig.HotkeysForJson["ToggleMode"] = Winswitch_shortcut_toolStripTextBox.Text;
+            patternConfig.HotkeysForJson["MinimizeOrClose"] = Minimize_shortcut_toolStripTextBox.Text;
+            patternConfig.HotkeysForJson["ToggleTopMost"] = MinTop_shortcut_toolStripTextBox.Text;
+            patternConfig.HotkeysForJson["StartReading"] = Startreading_shortcut_toolStripTextBox.Text;
+            patternConfig.HotkeysForJson["StopReading"] = Pausereading_shortcut_toolStripTextBox.Text;
+            patternConfig.HotkeysForJson["NextChapter"] = Nextchapterreading_shortcut_toolStripTextBox.Text;
+
+            // 保存到文件
+            var patterns = new PatternsContainer
+            {
+                Patterns = new[] { patternConfig }
+            };
+
+            string runningDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string jsonFilePath = Path.Combine(runningDirectory, "mySet.json");
+            string jsonString = JsonSerializer.Serialize(patterns, _serializerOptions);
+            File.WriteAllText(jsonFilePath, jsonString);
+
+            this.LogStatus_toolStripStatusLabel.Text = "设置已保存，路径：" + jsonFilePath;
+            this.LogStatus_toolStripStatusLabel.ForeColor = Color.Black;
+        }
+
+        #endregion
+
+        #region 解析按钮相关事件
+        //小说路径文本框拖拽输入
+        private void TXTPath_textBox_DragEnter(object? sender, DragEventArgs e)
+        {
+            if (e.Data != null && e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effect = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        private void TXTPath_textBox_DragDrop(object? sender, DragEventArgs e)
+        {
+            if (e.Data != null && e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                {
+                    this.TXTPath_textBox.Text = files[0];
+                }
+            }
+        }
+        //解析章节和正文
+        private void Analyze_button_Click(object sender, EventArgs e)
+        {
+            Analyze_novel();
+        }
+        #endregion
+
+        #region 选中章节，加载对应正文        
+        private void ListBox1_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (this.CurrentChapter_toolStripStatusLabel.Text != null)
+            {
+                chapters[this.CurrentChapter_toolStripStatusLabel.Text] = this.ChapterContent_richTextBox.Text;
+            }
+            this.CurrentChapter_toolStripStatusLabel.Text = Chapter_listBox.Items[Chapter_listBox.SelectedIndex].ToString() ?? "Default Value";
+            UpdateText();
+
+            pauseLineIndex = -1;
+            isResuming = false;
+
+            ChapterContent_richTextBox.Select(0, 0);
+            ChapterContent_richTextBox.ScrollToCaret();
+        }
+        #endregion
+
+        #region 托盘双击事件
+        private void notifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            RestoreFromTray();
+        }
+        #endregion
+
+        #region 托盘右键菜单事件
+
+        private void 迷你模式ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ShowMiniMode();
+        }
+
+        private void 显示主窗口ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            RestoreFromTray();
+        }
+
+        private void 退出ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show("确定要退出小说朗读器吗？",
+                "确认退出",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                notifyIcon1.Visible = false;
+                keyboardHook?.Dispose();
+                Application.Exit();
+            }
+        }
+
+        #endregion
+
+        #region 程序退出事件
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            // 只有当用户点击关闭按钮时才最小化到托盘
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                MinimizeToTray();
+                return;
+            }
+
+            // 其他关闭原因（如系统关闭、任务管理器结束等）正常关闭
+            base.OnFormClosing(e);
+        }
+
+        #endregion
+
+        #region 辅助方法-初始化相关
+        //加载系统语言包
         private void LoadTTSVoices()
         {
             语音包ToolStripMenuItem.DropDownItems.Clear();
@@ -172,6 +550,7 @@ namespace ReadTXT
                 语音包ToolStripMenuItem.DropDownItems.Add(new ToolStripMenuItem("没有安装的语音包"));
             }
         }
+        //设置语言包
         private void SelectVoice(string voiceName)
         {
             if (!string.IsNullOrEmpty(voiceName))
@@ -201,119 +580,167 @@ namespace ReadTXT
             }
         }
 
-        //定位到上次阅读章节
-        private void SetListBoxSelectedItemByToolStripLabelText()
+        // 加载上次的配置文件设置
+        private void Load_set()
         {
-            string ck = "0";
-            if (oldChapter != "")
+            string jsonPath = Path.Combine(Application.StartupPath, "mySet.json");
+            bool fileExists = File.Exists(jsonPath);
+            if (fileExists)
             {
-                for (int i = 0; i < listBox1.Items.Count; i++)
+                PatternsContainer? patterns = ReadJsonPatterns(jsonPath);
+                if (patterns?.Patterns != null && patterns.Patterns.Length > 0)
                 {
-                    if (listBox1.Items[i].ToString() == oldChapter)
+                    PatternItem firstPattern = patterns.Patterns[0];
+                    this.TXTPath_textBox.Text = firstPattern.TXTPath_textBoxPattern;
+                    this.Rule_textBox.Text = firstPattern.Rule_textBoxPattern;
+                    this.Speed_toolStripComboBox.Text = firstPattern.Speed_toolStripComboBoxPattern;
+                    this.ReadMode_toolStripComboBox.Text = firstPattern.ReadMode_toolStripComboBoxPattern;
+                    this.CurrentChapter_toolStripStatusLabel.Text = firstPattern.CurrentChapter_toolStripStatusLabelPattern;
+                    previousChapter = firstPattern.CurrentChapter_toolStripStatusLabelPattern ?? "";
+
+                    // 加载行号并设置到currentLineIndex
+                    if (!string.IsNullOrEmpty(firstPattern.CurrentLine_toolStripStatusLabelPattern))
                     {
-                        listBox1.SelectedIndex = i;
-                        ck = "1";
-                        break; // 找到匹配项后退出循环
+                        if (int.TryParse(firstPattern.CurrentLine_toolStripStatusLabelPattern, out int savedLineIndex))
+                        {
+                            currentLineIndex = savedLineIndex;
+                            this.CurrentLine_toolStripStatusLabel.Text = savedLineIndex.ToString();
+                        }
                     }
+
+                    FontStyle fontStyle = (FontStyle)firstPattern.FontStyle;
+                    Font newFont = new(
+                        familyName: firstPattern.FontName ?? "Microsoft YaHei UI",
+                        (float)firstPattern.FontSize,
+                        fontStyle
+                    );
+                    this.ChapterContent_richTextBox.Font = newFont;
+                    this.ChapterContent_richTextBox.BackColor = firstPattern.BlackColor.Color;
+                    this.Chapter_listBox.BackColor = firstPattern.BlackColor.Color;
+
+                    // 保存到patternConfig字段
+                    patternConfig = firstPattern;
+                                        
+                    // 确保Hotkeys不为空
+                    if (patternConfig.Hotkeys == null || patternConfig.Hotkeys.Count == 0)
+                    {
+                        patternConfig.Hotkeys = new Dictionary<string, string>
+                        {
+                            { "ToggleMode", "Ctrl+Alt+M" },
+                            { "MinimizeOrClose", "Ctrl+Alt+X" },
+                            { "ToggleTopMost", "Ctrl+Alt+T" },
+                            { "StartReading", "Ctrl+Alt+K" },
+                            { "StopReading", "Ctrl+Alt+Z" },
+                            { "NextChapter", "Ctrl+Alt+N" },
+                            { "SaveDocument", "Ctrl+Alt+S" }
+                        };
+                    }
+                    // 更新文本框显示
+                    UpdateHotkeyTextBoxes();
                 }
-                //如果没有找到上次的章节
-                if (ck == "0") { this.toolStripStatusLabel2.Text = "你可能换了一本小说，找不到上次看的那章>_<"; }
-            }
-        }
-
-
-        //DragEnter事件处理程序
-        private void textBox1_DragEnter(object? sender, DragEventArgs e)
-        {
-            if (e.Data != null && e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                e.Effect = DragDropEffects.Copy;
+                else
+                {
+                    this.LogStatus_toolStripStatusLabel.Text = "JSON文件中没有有效的规则设置。";
+                    this.LogStatus_toolStripStatusLabel.ForeColor = Color.Red;
+                }
             }
             else
             {
-                e.Effect = DragDropEffects.None;
-            }
-        }
-        // DragDrop事件处理程序
-        private void textBox1_DragDrop(object? sender, DragEventArgs e)
-        {
-            if (e.Data != null && e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-                {
-                    this.textBox1.Text = files[0];
-                }
+                this.LogStatus_toolStripStatusLabel.Text = "文件不存在: " + jsonPath;
+                this.LogStatus_toolStripStatusLabel.ForeColor = Color.Red;
             }
         }
 
-        //点击解析章节和内容
-        private void button1_Click(object sender, EventArgs e)
+        //恢复上一次的章节选择
+        private void RestorePreviousChapterSelection()
         {
-            Analyze_novel();
+            if (string.IsNullOrEmpty(previousChapter)) return;
+
+            bool found = false;
+            for (int i = 0; i < Chapter_listBox.Items.Count; i++)
+            {
+                if (Chapter_listBox.Items[i].ToString() == previousChapter)
+                {
+                    Chapter_listBox.SelectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                LogStatus_toolStripStatusLabel.Text = "你可能换了一本小说，找不到上次看的那章>_<";
+            }
         }
+        #endregion
+
+        #region 辅助方法-解析小说结构
+        //解析小说章节
         private void Analyze_novel()
         {
-            this.toolStripStatusLabel2.Text = "";//当前状态
-            this.toolStripStatusLabel4.Text="";//当前章节
-            this.toolStripStatusLabel6.Text ="0";//当前行 
-            this.listBox1.Items.Clear();//目录
-            currentChapterTitle="";//目录
-            this.richTextBox1.Text = "";//正文
-            chapters= [];//正文            
-            string filePath = this.textBox1.Text;// 指定TXT文件的路径
-            if (filePath!="")
+            this.LogStatus_toolStripStatusLabel.Text = "";
+            this.CurrentChapter_toolStripStatusLabel.Text = "";
+            this.CurrentLine_toolStripStatusLabel.Text = currentLineIndex.ToString(); // 使用保存的行号
+            this.Chapter_listBox.Items.Clear();
+            currentChapterTitle = "";
+            this.ChapterContent_richTextBox.Text = "";
+            chapters = [];
+            string filePath = this.TXTPath_textBox.Text;
+            if (filePath != "")
             {
                 try
                 {
-                    LoadFileContent(filePath); // 加载文件内容
-                    PopulateListBox(); // 填充ListBox
-                    listBox1.SelectedIndexChanged += ListBox1_SelectedIndexChanged;
-                    if (this.listBox1.Items.Count > 0)
+                    LoadFileContent(filePath);
+                    PopulateListBox();
+                    Chapter_listBox.SelectedIndexChanged += ListBox1_SelectedIndexChanged;
+                    if (this.Chapter_listBox.Items.Count > 0)
                     {
-                        if (this.toolStripStatusLabel4.Text == "")
+                        if (this.CurrentChapter_toolStripStatusLabel.Text == "")
                         {
-                            this.toolStripStatusLabel2.Text = "解析完成，开始阅读吧~";
+                            this.LogStatus_toolStripStatusLabel.Text = "解析完成，开始阅读吧~";
                         }
                         else
                         {
-                            this.toolStripStatusLabel2.Text = "已定位到上次的章节，继续阅读吧~";
+                            this.LogStatus_toolStripStatusLabel.Text = "已定位到上次的章节，继续阅读吧~";
                         }
-                        this.toolStripStatusLabel2.ForeColor = Color.Black;
+                        this.LogStatus_toolStripStatusLabel.ForeColor = Color.Black;
                     }
                     else
                     {
-                        this.toolStripStatusLabel2.Text = "未能解析到相关章节！请确认文件中有与规则匹配的章节标题。";
-                        this.toolStripStatusLabel2.ForeColor = Color.Red;
+                        this.LogStatus_toolStripStatusLabel.Text = "未能解析到相关章节！请确认文件中有与规则匹配的章节标题。";
+                        this.LogStatus_toolStripStatusLabel.ForeColor = Color.Red;
                     }
-
                 }
                 catch (Exception ex)
                 {
-                    this.toolStripStatusLabel2.Text = "读取文件时出错: " + ex.Message;
-                    this.toolStripStatusLabel2.ForeColor = Color.Red;
+                    this.LogStatus_toolStripStatusLabel.Text = "读取文件时出错: " + ex.Message;
+                    this.LogStatus_toolStripStatusLabel.ForeColor = Color.Red;
                 }
             }
         }
-        //加载章节和对应的正文
+        /// <summary>
+        /// 加载小说内容，章节chapterTitle+正文chapterContent
+        /// </summary>
+        /// <param name="filePath">小说路径</param>
         private void LoadFileContent(string filePath)
         {
             string[] lines = File.ReadAllLines(filePath);
-            if (this.textBox2.Text != "")
+            if (this.Rule_textBox.Text != "")
             {
                 for (int j = 0; j < lines.Length;)
                 {
-                    if (Regex.IsMatch(lines[j], this.textBox2.Text))
+                    if (Regex.IsMatch(lines[j], this.Rule_textBox.Text))
                     {
                         string chapterTitle = lines[j];
                         string chapterContent = "";
                         j++;
                         int contentIndex = j;
-                        while (contentIndex < lines.Length && !Regex.IsMatch(lines[contentIndex], this.textBox2.Text))
+                        while (contentIndex < lines.Length && !Regex.IsMatch(lines[contentIndex], this.Rule_textBox.Text))
                         {
                             chapterContent += lines[contentIndex] + Environment.NewLine;
                             contentIndex++;
                         }
-                        chapters[chapterTitle] =chapterTitle+ Environment.NewLine+ chapterContent;
+                        chapters[chapterTitle] = chapterTitle + Environment.NewLine + chapterContent;
                         j = contentIndex;
                     }
                     else
@@ -324,164 +751,166 @@ namespace ReadTXT
             }
             else
             {
-                richTextBox1.Text = "";
-                richTextBox1.Text = string.Join(Environment.NewLine, lines);
+                ChapterContent_richTextBox.Text = "";
+                ChapterContent_richTextBox.Text = string.Join(Environment.NewLine, lines);
             }
         }
-        //将章节添加到目录
+        /// <summary>
+        /// 将章节清单加载到listBox1
+        /// </summary>
         private void PopulateListBox()
         {
             if (chapters != null)
             {
-                listBox1.Items.Clear();
+                Chapter_listBox.Items.Clear();
                 foreach (var chapter in chapters.Keys)
                 {
-                    listBox1.Items.Add(chapter);
+                    Chapter_listBox.Items.Add(chapter);
                 }
             }
             else
             {
-                this.toolStripStatusLabel2.Text = "未能匹配到相关章节！建议查看原始文档中章节标题是否与章节规则匹配！！！";
-                this.toolStripStatusLabel2.ForeColor = Color.Red;
+                this.LogStatus_toolStripStatusLabel.Text = "未能匹配到相关章节！建议查看原始文档中章节标题是否与章节规则匹配！！！";
+                this.LogStatus_toolStripStatusLabel.ForeColor = Color.Red;
             }
         }
+        #endregion
 
-        private void ListBox1_SelectedIndexChanged(object? sender, EventArgs e)
+        #region 辅助方法-其他
+
+        //设置富文本-高亮朗读文本段为红色
+        private void HighlightCurrentLine(Color color)
         {
-            if (this.toolStripStatusLabel4.Text != null)
+            if (currentLineIndex < ChapterContent_richTextBox.Lines.Length)
             {
-                chapters[this.toolStripStatusLabel4.Text] = this.richTextBox1.Text;
-            }
-            this.toolStripStatusLabel4.Text = listBox1.Items[listBox1.SelectedIndex].ToString() ?? "Default Value";
-            UpdateText();
+                string currentLineText = ChapterContent_richTextBox.Lines[currentLineIndex];
 
-            // 重置暂停位置（切换到新章节时）
-            pauseLineIndex = -1;
-            isResuming = false;
-
-            // 重置滚动条到最开始
-            richTextBox1.Select(0, 0);
-            richTextBox1.ScrollToCaret();
-        }
-        //点击设置：加载上次的阅读状态
-        private void button2_Click(object sender, EventArgs e)
-        {
-            Load_set();
-            if (oldChapter != "")
-            {
-                SetListBoxSelectedItemByToolStripLabelText();//定位到上次章节
-                UpdateText();
-            }
-        }
-
-        //保存设置：保存当前阅读设置
-        private void button3_Click(object sender, EventArgs e)
-        {
-            // 定义要序列化为JSON的对象
-            var patterns = new
-            {
-                Patterns = new[]
+                if (string.IsNullOrWhiteSpace(currentLineText))
                 {
-                    new
+                    return;
+                }
+                int startIndex = 0;
+                for (int i = 0; i < currentLineIndex; i++)
+                {
+                    startIndex += ChapterContent_richTextBox.Lines[i].Length + 1;
+                }
+
+                int length = currentLineText.Length;
+
+                ChapterContent_richTextBox.SelectAll();
+                ChapterContent_richTextBox.SelectionColor = Color.Black;
+
+                if (startIndex >= 0 && startIndex + length <= ChapterContent_richTextBox.Text.Length)
+                {
+                    ChapterContent_richTextBox.Select(startIndex, length);
+                    ChapterContent_richTextBox.SelectionColor = color;
+                    ChapterContent_richTextBox.ScrollToCaret();
+                }
+                ChapterContent_richTextBox.DeselectAll();
+            }
+        }
+
+        //设置富文本-背景色、字体等
+        private void SetRichTextBoxTextColor(RichTextBox richTextBox, Color color, string spk)
+        {
+            HighlightCurrentLine(color);
+
+            if (spk == "1" && isSpeaking)
+            {
+                string lineText = richTextBox.Lines[currentLineIndex];
+                if (!string.IsNullOrWhiteSpace(lineText))
+                {
+                    synthesizer.SpeakAsync(lineText);
+                }
+            }
+        }
+
+        //窗体尺寸变化触发事件
+        private void ReadTXT_Resize(object? sender, EventArgs? e)
+        {
+            // 只有当用户点击最小化按钮时才最小化到托盘
+            if (this.WindowState == FormWindowState.Minimized && !isMinimizedToTray)
+            {
+                // 延迟执行，避免与快捷键冲突
+                Task.Delay(100).ContinueWith(_ =>
+                {
+                    this.BeginInvoke(new Action(() =>
                     {
-                        textBox1Pattern = this.textBox1.Text,
-                        textBox2Pattern = this.textBox2.Text,
-                        toolStripComboBox1Pattern =this. toolStripComboBox1.Text,
-                        toolStripComboBox2Pattern =this. toolStripComboBox2.Text,
-                        toolStripStatusLabel4Pattern =this.toolStripStatusLabel4.Text,
-                        FontName=this.richTextBox1.Font.Name,
-                        FontStyle=this.richTextBox1.Font.Style,
-                        FontSize=this.richTextBox1.Font.Size,
-                        BlackColor=this.richTextBox1.BackColor
-                    }
-                }
+                        if (this.WindowState == FormWindowState.Minimized && !isMinimizedToTray)
+                        {
+                            MinimizeToTray();
+                        }
+                    }));
+                });
+            }
+        }
+
+        // 更新热键文本框显示
+        private void UpdateHotkeyTextBoxes()
+        {
+            if (patternConfig?.Hotkeys == null)
+                return;
+
+            // 更新每个文本框
+            if (patternConfig.Hotkeys.TryGetValue("ToggleMode", out string toggleModeHotkey))
+                Winswitch_shortcut_toolStripTextBox.Text = toggleModeHotkey;
+
+            if (patternConfig.Hotkeys.TryGetValue("MinimizeOrClose", out string minimizeHotkey))
+                Minimize_shortcut_toolStripTextBox.Text = minimizeHotkey;
+
+            if (patternConfig.Hotkeys.TryGetValue("ToggleTopMost", out string topMostHotkey))
+                MinTop_shortcut_toolStripTextBox.Text = topMostHotkey;
+
+            if (patternConfig.Hotkeys.TryGetValue("StartReading", out string startReadingHotkey))
+                Startreading_shortcut_toolStripTextBox.Text = startReadingHotkey;
+
+            if (patternConfig.Hotkeys.TryGetValue("StopReading", out string stopReadingHotkey))
+                Pausereading_shortcut_toolStripTextBox.Text = stopReadingHotkey;
+
+            if (patternConfig.Hotkeys.TryGetValue("NextChapter", out string nextChapterHotkey))
+                Nextchapterreading_shortcut_toolStripTextBox.Text = nextChapterHotkey;
+            
+        }
+
+        //日志信息
+        public void LogStatus(string message)
+        {
+            string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+            string logMessage = $"{timestamp} - {message}";
+            Debug.WriteLine($"{logMessage}");
+
+            this.BeginInvoke(new Action(() =>
+            {
+                if (this.LogStatus_toolStripStatusLabel.Text.Length > 200)
+                    this.LogStatus_toolStripStatusLabel.Text = "";
+                this.LogStatus_toolStripStatusLabel.Text = logMessage;
+            }));
+        }
+
+        #endregion
+
+        #region 辅助方法-朗读相关
+        //初始化朗读引擎
+        private void InitializeSynthesizer()
+        {
+            synthesizer = new SpeechSynthesizer();
+            synthesizer.SpeakStarted += Synthesizer_SpeakStarted;
+            synthesizer.SpeakProgress += Synthesizer_SpeakProgress;
+            synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
+            synthesizer.SetOutputToDefaultAudioDevice();
+
+            //初始化计时器
+            completionTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 10000
             };
-            // 获取运行目录
-            string runningDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            // 构建JSON文件路径
-            string jsonFilePath = Path.Combine(runningDirectory, "mySet.json");
-            // 将对象序列化为JSON字符串
-            string jsonString = SerializeObject(patterns);
-            // 将JSON字符串写入文件
-            File.WriteAllText(jsonFilePath, jsonString);
+            completionTimer.Tick += CompletionTimer_Tick;
         }
 
-        private void Load_set()
-        {
-            string jsonPath = Path.Combine(Application.StartupPath, "mySet.json");
-            bool fileExists = File.Exists(jsonPath);
-            if (fileExists)
-            {
-                // 处理JSON文件的逻辑
-                PatternsContainer? patterns = ReadJsonPatterns(jsonPath);
-                if (patterns?.Patterns != null && patterns.Patterns.Length > 0)
-                {
-                    PatternItem firstPattern = patterns.Patterns[0];
-                    this.textBox1.Text = firstPattern.textBox1Pattern;//上次阅读的小说路径
-                    this.textBox2.Text = firstPattern.textBox2Pattern;//上次阅读的小说章节规则
-                    this.toolStripComboBox1.Text = firstPattern.toolStripComboBox1Pattern;//语速
-                    this.toolStripComboBox2.Text = firstPattern.toolStripComboBox2Pattern;//模式
-                    this.toolStripStatusLabel4.Text = firstPattern.toolStripStatusLabel4Pattern;//上次阅读到的章节
-                    oldChapter=firstPattern.toolStripStatusLabel4Pattern??"";
-                    // 创建新的 Font 对象
-                    FontStyle fontStyle = (FontStyle)firstPattern.FontStyle;
-                    Font newFont = new(
-                        familyName: firstPattern.FontName ?? "Microsoft YaHei UI",
-                        (float)firstPattern.FontSize,
-                        fontStyle
-                    );
-                    // 设置 RichTextBox 的字体
-                    this.richTextBox1.Font = newFont;
-                    // 设置正文背景色
-                    this.richTextBox1.BackColor = firstPattern.BlackColor.Color;
-                    this.listBox1.BackColor = firstPattern.BlackColor.Color;
-                }
-                else
-                {
-                    this.toolStripStatusLabel2.Text = "JSON文件中没有有效的规则设置。";
-                    this.toolStripStatusLabel2.ForeColor = Color.Red;
-                }
-            }
-            else
-            {
-                // 文件不存在，可以执行创建文件或其他操作
-                this.toolStripStatusLabel2.Text = "文件不存在: " + jsonPath;
-                this.toolStripStatusLabel2.ForeColor = Color.Red;
-            }
-        }
-
-        //朗读操作
-        //暂停
-        private void toolStripButton1_Click(object sender, EventArgs e)
-        {
-            StopRead();
-        }
-        //开始
-        private void toolStripButton2_Click(object sender, EventArgs e)
-        {
-            StopRead();
-            StartRead();
-        }
-        //下一章
-        private void toolStripButton3_Click(object? sender, EventArgs? e)
-        {
-            StopRead();
-            GoToNextChapter();
-            StartReadFromBeginning();
-        }
-        // 从头开始朗读的方法
-        private void StartReadFromBeginning()
-        {
-            pauseLineIndex = -1;
-            isResuming = false;
-            currentLineIndex = 0;
-            this.toolStripStatusLabel6.Text = "0";
-            StartRead();
-        }
-        //开始朗读
+        // 开始朗读方法，从保存的行号开始
         private void StartRead()
         {
-            if (int.TryParse(this.toolStripComboBox1.Text, out int rate))
+            if (int.TryParse(this.Speed_toolStripComboBox.Text, out int rate))
             {
                 synthesizer.Rate = rate;
             }
@@ -496,19 +925,18 @@ namespace ReadTXT
                 {
                     currentLineIndex = pauseLineIndex;
                     isResuming = true;
-                    pauseLineIndex = -1; // 重置暂停位置
+                    pauseLineIndex = -1;
                     LogStatus($"从暂停位置继续：第{currentLineIndex}行");
                 }
                 else if (!isResuming)
                 {
-                    // 不是恢复状态，从头开始
-                    currentLineIndex = 0;
-                    this.toolStripStatusLabel6.Text = "0";
+                    // 不是恢复状态，使用保存的行号或从头开始
+                    // currentLineIndex已经在Load_set中设置了，这里不需要
+                    LogStatus($"从保存位置开始：第{currentLineIndex}行");
                 }
 
-                this.toolStripStatusLabel2.Text = "正在启动朗读...";
+                this.LogStatus_toolStripStatusLabel.Text = "正在启动朗读...";
 
-                // 短暂延迟后开始，确保事件监听器就绪
                 Task.Delay(100).ContinueWith(_ =>
                 {
                     this.BeginInvoke(new Action(() =>
@@ -521,7 +949,7 @@ namespace ReadTXT
                         }
                         else
                         {
-                            // 从头开始，先高亮第一行
+                            // 从头开始或从保存位置开始，先高亮当前行
                             HighlightCurrentLine(Color.Red);
                         }
 
@@ -531,55 +959,40 @@ namespace ReadTXT
             }
         }
 
-        //停止朗读
-        private void StopRead()
+        // 从头开始朗读的方法
+        private void StartReadFromBeginning()
         {
-            // 记录暂停位置
-            if (isSpeaking && currentLineIndex < richTextBox1.Lines.Length)
-            {
-                pauseLineIndex = currentLineIndex;
-                LogStatus($"已暂停，当前位置：第{pauseLineIndex}行");
-            }
-
-            isSpeaking = false;
-            waitForRealCompletion = false;
-            completionTimer?.Stop();
-
-            synthesizer.SpeakAsyncCancelAll();
-            this.toolStripStatusLabel2.Text = "已暂停";
+            pauseLineIndex = -1;
+            isResuming = false;
+            currentLineIndex = 0; // 重置为0，从头开始
+            this.CurrentLine_toolStripStatusLabel.Text = "0";
+            StartRead();
         }
-
         //开始朗读当前行
         private void StartReadingCurrentLine()
         {
             if (!isSpeaking) return;
 
-            // 重置状态
             waitForRealCompletion = false;
 
-            // 启动超时计时器
             completionTimer.Stop();
             completionTimer.Start();
 
-            // 重置完成等待标志
             waitForRealCompletion = false;
 
-            if (currentLineIndex >= richTextBox1.Lines.Length)
+            if (currentLineIndex >= ChapterContent_richTextBox.Lines.Length)
             {
                 ChapterCompleted();
                 return;
             }
 
-            // 获取逻辑行的完整文本（注意：这是按Enter键分隔的行，不是显示的行）
-            string lineText = richTextBox1.Lines[currentLineIndex];
+            string lineText = ChapterContent_richTextBox.Lines[currentLineIndex];
 
             if (string.IsNullOrWhiteSpace(lineText))
             {
-                // 空行处理
                 currentLineIndex++;
-                this.toolStripStatusLabel6.Text = currentLineIndex.ToString();
+                this.CurrentLine_toolStripStatusLabel.Text = currentLineIndex.ToString();
 
-                // 短暂延迟后处理下一行
                 Task.Delay(100).ContinueWith(_ =>
                 {
                     this.BeginInvoke(new Action(StartReadingCurrentLine));
@@ -587,10 +1000,8 @@ namespace ReadTXT
                 return;
             }
 
-            // 高亮整个逻辑行
             HighlightCurrentLine(Color.Red);
 
-            // 使用Prompt对象而不是直接传字符串，提高稳定性
             Prompt prompt = new(lineText);
 
             try
@@ -601,103 +1012,35 @@ namespace ReadTXT
             catch (Exception ex)
             {
                 LogStatus($"朗读出错: {ex.Message}");
-                // 出错时也继续下一行，避免卡死
                 ProcessRealCompletion();
             }
         }
 
-
-        // 高亮当前行的方法
-        private void HighlightCurrentLine(Color color)
-        {
-            if (currentLineIndex < richTextBox1.Lines.Length)
-            {
-                // 获取当前逻辑行的文本
-                string currentLineText = richTextBox1.Lines[currentLineIndex];
-
-                // 如果当前行是空行，不进行高亮
-                if (string.IsNullOrWhiteSpace(currentLineText))
-                {
-                    return;
-                }
-
-                // 找到逻辑行的起始位置
-                int startIndex = 0;
-                for (int i = 0; i < currentLineIndex; i++)
-                {
-                    startIndex += richTextBox1.Lines[i].Length + 1; // +1 是为了换行符
-                }
-
-                // 逻辑行的长度（不包括换行符）
-                int length = currentLineText.Length;
-
-                // 清除之前的高亮（将所有文本设为黑色）
-                richTextBox1.SelectAll();
-                richTextBox1.SelectionColor = Color.Black;
-
-                // 高亮整个逻辑行（无论它显示为多少行）
-                if (startIndex >= 0 && startIndex + length <= richTextBox1.Text.Length)
-                {
-                    richTextBox1.Select(startIndex, length);
-                    richTextBox1.SelectionColor = color;
-
-                    // 滚动到高亮行的起始位置
-                    richTextBox1.ScrollToCaret();
-                }
-
-                richTextBox1.DeselectAll();
-            }
-        }
-
-        // 关键修复：正确的完成事件处理
-        private void Synthesizer_SpeakCompleted(object? sender, SpeakCompletedEventArgs? e)
-        {
-            //LogStatus("SpeakCompleted事件触发");
-
-            // 只有当我们真正开始朗读后才处理完成事件
-            if (waitForRealCompletion && isSpeaking)
-            {
-                waitForRealCompletion = false;
-                ProcessRealCompletion();
-            }
-            else if (!isSpeaking && pauseLineIndex >= 0)
-            {
-                // 如果是暂停状态，保持当前高亮
-                HighlightCurrentLine(Color.Red);
-            }
-        }
-
-        // 修改ProcessRealCompletion方法，确保正确计数
+        // 朗读进度
         private void ProcessRealCompletion()
         {
-            completionTimer.Stop(); // 停止超时计时器
+            completionTimer.Stop();
             if (!isSpeaking) return;
 
             LogStatus($"完成第{currentLineIndex + 1}行的朗读");
 
-            if (this.toolStripComboBox2.Text == "整行")
+            if (this.ReadMode_toolStripComboBox.Text == "整行")
             {
-                // 检查是否是当前章节的最后一行
-                bool isLastLine = currentLineIndex >= richTextBox1.Lines.Length - 1;
+                bool isLastLine = currentLineIndex >= ChapterContent_richTextBox.Lines.Length - 1;
 
                 if (isLastLine)
                 {
-                    // 如果是最后一行，表示本章节结束
-                    // 注意：这里不设置isSpeaking为false，让ChapterCompleted处理
                     ChapterCompleted();
                 }
                 else
                 {
-                    // 不是最后一行，继续下一行
                     currentLineIndex++;
-                    this.toolStripStatusLabel6.Text = currentLineIndex.ToString();
+                    this.CurrentLine_toolStripStatusLabel.Text = currentLineIndex.ToString(); // 更新行号显示
 
-                    // 短暂延迟后继续下一行
                     Task.Delay(300).ContinueWith(_ =>
                     {
                         this.BeginInvoke(new Action(() =>
                         {
-                            // 先高亮下一行，再开始朗读
                             HighlightCurrentLine(Color.Red);
                             StartReadingCurrentLine();
                         }));
@@ -706,110 +1049,42 @@ namespace ReadTXT
             }
         }
 
-        private void LogCurrentLineInfo()
-        {
-            if (currentLineIndex < richTextBox1.Lines.Length)
-            {
-                string lineText = richTextBox1.Lines[currentLineIndex];
-                var (startIndex, length) = GetLogicalLinePosition(currentLineIndex);
-
-                LogStatus($"行 {currentLineIndex + 1}: 起始位置={startIndex}, 长度={length}, 文本长度={lineText.Length}");
-                LogStatus($"文本预览: {(lineText.Length > 50 ? lineText.Substring(0, 50) + "..." : lineText)}");
-            }
-        }
-        // 切换到下一章
-        private bool GoToNextChapter()
-        {
-            if (listBox1.SelectedIndex >= 0)
-            {
-                int selectedIndex = listBox1.SelectedIndex;
-                if (selectedIndex < listBox1.Items.Count - 1)
-                {
-                    int nextItemIndex = selectedIndex + 1;
-                    listBox1.SelectedIndex = nextItemIndex;
-                    this.toolStripStatusLabel4.Text = listBox1.Items[nextItemIndex].ToString() ?? "Default Value";
-                    UpdateText();
-                    return true; // 成功切换到下一章
-                }
-                else
-                {
-                    // 已经是最后一章，停止朗读
-                    // 注意：这里不设置isSpeaking为false，让ChapterCompleted处理
-                    return false; // 已经是最后一章
-                }
-            }
-            return false; // 没有选中任何章节
-        }
-
-        // 章节完成处理
-        private void ChapterCompleted()
-        {
-            // 如果当前是整行模式，自动跳转到下一章
-            if (this.toolStripComboBox2.Text == "整行")
-            {
-                // 尝试切换到下一章
-                if (GoToNextChapter())
-                {
-                    // 切换到下一章成功，继续朗读
-                    // 注意：这里不检查isSpeaking，因为我们需要强制开始朗读
-
-                    // 短暂延迟后开始新章节
-                    Task.Delay(300).ContinueWith(_ =>
-                    {
-                        this.BeginInvoke(new Action(() =>
-                        {
-                            // 重置朗读状态，确保可以开始新的朗读
-                            isSpeaking = false; // 重置为false，让StartRead能够正常工作
-                            waitForRealCompletion = false;
-                            completionTimer?.Stop();
-
-                            // 新章节从头开始朗读
-                            StartReadFromBeginning();
-                        }));
-                    });
-                }
-                else
-                {
-                    // 已经是最后一章，停止朗读
-                    isSpeaking = false;
-                    this.toolStripStatusLabel2.Text = "全文朗读完成";
-                }
-            }
-            else
-            {
-                // 其他模式，只完成本章朗读
-                isSpeaking = false;
-                this.toolStripStatusLabel2.Text = "本章朗读完成";
-            }
-        }
-
-        // 修改UpdateText方法
+        // 更新章节正文，清除富文本高亮，初始化/加载上次行号
         private void UpdateText()
         {
-            if (listBox1.SelectedIndex != -1)
+            if (Chapter_listBox.SelectedIndex != -1)
             {
-                object selectedItem = listBox1.Items[listBox1.SelectedIndex];
+                object selectedItem = Chapter_listBox.Items[Chapter_listBox.SelectedIndex];
                 string selectedChapter = selectedItem.ToString() ?? "Default Value";
                 currentChapterTitle = selectedChapter;
                 if (chapters.TryGetValue(currentChapterTitle, out string value))
                 {
-                    this.richTextBox1.Text = value;
+                    this.ChapterContent_richTextBox.Text = value;
 
-                    // 只在首次加载章节时重置行号
+                    // 只在首次加载章节时重置行号（如果当前行号大于文本行数，则重置为0）
                     if (!isResuming)
                     {
-                        currentLineIndex = 0;
-                        this.toolStripStatusLabel6.Text = "0";
-                        LogStatus($"新章节开始，共{richTextBox1.Lines.Length}行");
+                        // 如果当前行号大于文本行数，重置为0
+                        if (currentLineIndex >= ChapterContent_richTextBox.Lines.Length)
+                        {
+                            currentLineIndex = 0;
+                            this.CurrentLine_toolStripStatusLabel.Text = "0";
+                        }
+                        else
+                        {
+                            // 保持当前行号，只更新显示
+                            this.CurrentLine_toolStripStatusLabel.Text = currentLineIndex.ToString();
+                        }
+                        LogStatus($"新章节开始，共{ChapterContent_richTextBox.Lines.Length}行，从第{currentLineIndex + 1}行开始");
                     }
 
                     // 重置文本颜色
-                    richTextBox1.SelectAll();
-                    richTextBox1.SelectionColor = Color.Black;
-                    richTextBox1.DeselectAll();
+                    ChapterContent_richTextBox.SelectAll();
+                    ChapterContent_richTextBox.SelectionColor = Color.Black;
+                    ChapterContent_richTextBox.DeselectAll();
 
                     // 如果是恢复状态，高亮当前行
-                    if (isResuming && currentLineIndex > 0 && currentLineIndex < richTextBox1.Lines.Length)
+                    if (isResuming && currentLineIndex > 0 && currentLineIndex < ChapterContent_richTextBox.Lines.Length)
                     {
                         HighlightCurrentLine(Color.Red);
                         LogStatus($"恢复朗读，从第{currentLineIndex + 1}行继续");
@@ -818,140 +1093,761 @@ namespace ReadTXT
             }
         }
 
-        // 添加一个方法来计算逻辑行的位置和长度
-        private (int startIndex, int length) GetLogicalLinePosition(int lineIndex)
+        // 判断是否进入下一章
+        private bool GoToNextChapter()
         {
-            if (lineIndex < 0 || lineIndex >= richTextBox1.Lines.Length)
-                return (0, 0);
-
-            int startIndex = 0;
-            for (int i = 0; i < lineIndex; i++)
+            if (Chapter_listBox.SelectedIndex >= 0)
             {
-                startIndex += richTextBox1.Lines[i].Length + 1; // +1 是为了换行符
-            }
-
-            int length = richTextBox1.Lines[lineIndex].Length;
-            return (startIndex, length);
-        }
-
-
-        // 设置富文本朗读时的颜色
-        private void SetRichTextBoxTextColor(RichTextBox richTextBox, Color color, string spk)
-        {
-            HighlightCurrentLine(color);
-
-            if (spk == "1" && isSpeaking)
-            {
-                // 获取当前逻辑行的文本
-                string lineText = richTextBox.Lines[currentLineIndex];
-                if (!string.IsNullOrWhiteSpace(lineText))
+                int selectedIndex = Chapter_listBox.SelectedIndex;
+                if (selectedIndex < Chapter_listBox.Items.Count - 1)
                 {
-                    synthesizer.SpeakAsync(lineText);
+                    int nextItemIndex = selectedIndex + 1;
+                    Chapter_listBox.SelectedIndex = nextItemIndex;
+                    this.CurrentChapter_toolStripStatusLabel.Text = Chapter_listBox.Items[nextItemIndex].ToString() ?? "Default Value";
+                    UpdateText();
+                    return true;
+                }
+                else
+                {
+                    return false;
                 }
             }
+            return false;
         }
-        //修改字体
-        private void 字体ToolStripMenuItem_Click(object sender, EventArgs e)
+
+        //根据GoToNextChapter的值，切换下一章或者全文完结束朗读。
+        private void ChapterCompleted()
         {
-            // 显示字体对话框
-            if (fontDialog1.ShowDialog() == DialogResult.OK)
+            if (this.ReadMode_toolStripComboBox.Text == "整行")
             {
-                // 获取用户选择的字体
-                Font selectedFont = fontDialog1.Font;
-                richTextBox1.Font = selectedFont;
-            }
-        }
-        //修改背景色
-        private void 背景色ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            // 如果用户点击了确定                                                                        
-            if (colorDialog1.ShowDialog() == DialogResult.OK)
-            {
-                // 获取用户选择的颜色
-                Color selectedColor = colorDialog1.Color;
-                // 应用颜色到RichTextBox的背景
-                this.richTextBox1.BackColor = selectedColor;
-                this.listBox1.BackColor = selectedColor;
-            }
-        }
-        //保存
-        private void toolStripButton4_Click(object sender, EventArgs e)
-        {
-            //原来的文件路径
-            string originalFilePath = this.textBox1.Text;
-            string directory = Path.GetDirectoryName(originalFilePath);
-            string fileName = Path.GetFileNameWithoutExtension(originalFilePath);
-            string extension = Path.GetExtension(originalFilePath);
-            // 构建新的文件名
-            string newFileName = $"{fileName}{extension}";
-            // 获取当前时间，并格式化
-            DateTime now = DateTime.Now;
-            if (toolStripComboBox3.Text=="另存带日期戳")
-            {
-                string timestamp = now.ToString("yyyyMMdd");
-                newFileName = $"{fileName}-{timestamp}{extension}";
-            }
-            else if (toolStripComboBox3.Text=="另存带时间戳")
-            {
-                string timestamp = now.ToString("yyyyMMddHHmmss");
-                newFileName = $"{fileName}-{timestamp}{extension}";
-            }
-            string newFilePath = Path.Combine(directory, newFileName);
-            Encoding selectedEncoding = this.comboBox1.SelectedItem.ToString() switch
-            {
-                "UTF-8" => Encoding.UTF8,
-                "UTF-8 BOM" => new UTF8Encoding(true),// 包含 BOM 的 UTF-8 编码
-                "ANSI" => Encoding.Default,// ANSI
-                _ => Encoding.UTF8,
-            };
-            if (!string.IsNullOrEmpty(currentChapterTitle))
-            {
-                chapters[currentChapterTitle] = this.richTextBox1.Text;
-                using StreamWriter writer = new(newFilePath, false, selectedEncoding);
-                foreach (var chapter in chapters)
+                if (GoToNextChapter())
                 {
-                    writer.Write(chapter.Value); // 写入章节内容
-                    writer.WriteLine(); // 在每个章节内容后添加一个空行作为分隔
+                    Task.Delay(300).ContinueWith(_ =>
+                    {
+                        this.BeginInvoke(new Action(() =>
+                        {
+                            isSpeaking = false;
+                            waitForRealCompletion = false;
+                            completionTimer?.Stop();
+                            StartReadFromBeginning();
+                        }));
+                    });
+                }
+                else
+                {
+                    isSpeaking = false;
+                    this.LogStatus_toolStripStatusLabel.Text = "全文朗读完成";
                 }
             }
             else
             {
-                using StreamWriter writer = new(newFilePath, false, selectedEncoding);
-                writer.Write(this.richTextBox1.Text); // 写入章节内容
+                isSpeaking = false;
+                this.LogStatus_toolStripStatusLabel.Text = "本章朗读完成";
             }
-            this.toolStripStatusLabel2.Text = "保存成功，路径："+ newFilePath;
-            this.toolStripStatusLabel2.ForeColor = Color.Black;
         }
 
-        // 添加日志输出
-        private void LogStatus(string message)
+        //朗读状态
+        private void Synthesizer_SpeakStarted(object? sender, SpeakStartedEventArgs? e)
         {
-            string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
-            string logMessage = $"{timestamp} - {message}";
-            Debug.WriteLine($"{logMessage}");
+            waitForRealCompletion = true;
+        }
 
-            // 可选：在界面显示最后几条日志
-            this.BeginInvoke(new Action(() =>
+        //朗读进度
+        private void Synthesizer_SpeakProgress(object? sender, SpeakProgressEventArgs? e)
+        {
+            LogStatus($"朗读进度: '{e.Text}' (位置: {e.CharacterPosition})");
+        }
+
+        //朗读结束
+        private void Synthesizer_SpeakCompleted(object? sender, SpeakCompletedEventArgs? e)
+        {
+            if (waitForRealCompletion && isSpeaking)
             {
-                if (this.toolStripStatusLabel2.Text.Length > 200)
-                    this.toolStripStatusLabel2.Text = "";
-                //this.toolStripStatusLabel2.Text += logMessage + Environment.NewLine;
-                this.toolStripStatusLabel2.Text = logMessage;
-            }));
+                waitForRealCompletion = false;
+                ProcessRealCompletion();
+            }
+            else if (!isSpeaking && pauseLineIndex >= 0)
+            {
+                HighlightCurrentLine(Color.Red);
+            }
+        }
+
+        //朗读完成时间
+        private void CompletionTimer_Tick(object? sender, EventArgs? e)
+        {
+            completionTimer.Stop();
+            if (waitForRealCompletion && isSpeaking)
+            {
+                LogStatus("朗读超时，强制继续下一行");
+                waitForRealCompletion = false;
+                ProcessRealCompletion();
+            }
+        }
+        //停止朗读
+        private void StopRead()
+        {
+            if (isSpeaking && currentLineIndex < ChapterContent_richTextBox.Lines.Length)
+            {
+                pauseLineIndex = currentLineIndex;
+                LogStatus($"已暂停，当前位置：第{pauseLineIndex}行");
+            }
+
+            isSpeaking = false;
+            waitForRealCompletion = false;
+            completionTimer?.Stop();
+
+            synthesizer.SpeakAsyncCancelAll();
+            this.LogStatus_toolStripStatusLabel.Text = "已暂停";
+        }
+        #endregion
+
+        #region 添加热键管理相关方法
+        // 提供修改热键的方法
+        public bool SetHotkey(string actionName, string hotkeyString)
+        {
+            return hotkeyManager?.SetHotkey(actionName, hotkeyString) ?? false;
+        }
+
+        // 获取当前热键配置
+        public Dictionary<string, string> GetHotkeys()
+        {
+            return hotkeyManager?.GetCurrentHotkeys() ?? new Dictionary<string, string>();
+        }
+
+        // 重新加载热键配置
+        public void ReloadHotkeys()
+        {
+            // 重新加载配置文件
+            string jsonPath = Path.Combine(Application.StartupPath, "mySet.json");
+            if (File.Exists(jsonPath))
+            {
+                PatternsContainer? patterns = ReadJsonPatterns(jsonPath);
+                if (patterns?.Patterns != null && patterns.Patterns.Length > 0)
+                {
+                    patternConfig = patterns.Patterns[0];
+                    if (hotkeyManager != null)
+                    {
+                        // 重新加载配置
+                        // 注意：这里需要为HotkeyManager添加ReloadConfig方法
+                        // 或者重新创建HotkeyManager实例
+                        hotkeyManager = new HotkeyManager(this, patternConfig);
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region 辅助方法-窗体切换
+        // 显示迷你模式窗体
+        public void ShowMiniMode()
+        {
+            try
+            {
+                // 如果迷你模式窗口已经存在且未关闭，则激活它
+                if (miniModeForm != null && !miniModeForm.IsDisposed)
+                {
+                    miniModeForm.Show();
+                    miniModeForm.Activate();
+                    miniModeForm.Focus();
+                    return;
+                }
+                // 创建新的迷你模式窗口
+                miniModeForm = new MiniModeForm(this)
+                {
+                    Text = "ReadTXT - 迷你模式",
+                    FormBorderStyle = FormBorderStyle.SizableToolWindow,
+                    Size = new Size(400, 150),
+                    StartPosition = FormStartPosition.Manual,
+                    Location = new Point(
+                        Screen.PrimaryScreen.WorkingArea.Width - 400,
+                        Screen.PrimaryScreen.WorkingArea.Height - 150
+                    ),
+                    ShowInTaskbar = false,
+                    TopMost = true
+                };
+
+                // 使用命名的事件处理方法，便于移除
+                miniModeForm.FormClosing += MiniModeForm_FormClosing;
+                miniModeForm.FormClosed += MiniModeForm_FormClosed;
+                miniModeForm.Show();
+                miniModeForm.Activate();
+                miniModeForm.Focus();
+                LogStatus("迷你模式窗口已创建并显示");
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"显示迷你模式失败: {ex.Message}");
+            }
+        }
+
+        //判断迷你窗体是否活动
+        public bool IsMiniModeActive()
+        {
+            return miniModeForm != null &&
+                   !miniModeForm.IsDisposed &&
+                   miniModeForm.Visible &&
+                   miniModeForm.WindowState != FormWindowState.Minimized;
+        }
+        //判断主窗体是否活动
+        public bool IsMainWindowActive()
+        {
+            return this.Visible &&
+                   this.WindowState == FormWindowState.Normal &&
+                   !isMinimizedToTray;
         }
 
 
-        // 确保在表单关闭时释放资源
-        protected override void OnFormClosed(FormClosedEventArgs e)
+        // 添加状态修复方法
+        public void FixWindowStates()
         {
-            base.OnFormClosed(e);
-            synthesizer.Dispose();
-            completionTimer?.Dispose(); // 添加这行
+            LogStatus("开始修复窗口状态...");
+
+            bool miniActive = IsMiniModeActive();
+            bool mainActive = IsMainWindowActive();
+
+            // 如果两个窗口都激活或都未激活，进行修复
+            if (miniActive && mainActive)
+            {
+                LogStatus("检测到两个窗口都激活，关闭迷你模式");
+            }
+            else if (!miniActive && !mainActive)
+            {
+                LogStatus("检测到两个窗口都未激活，恢复主窗体");
+                RestoreFromTray();
+            }
+            else if (miniActive && !mainActive)
+            {
+                LogStatus("迷你模式激活但主窗体未激活，状态正常");
+            }
+            else if (!miniActive && mainActive)
+            {
+                LogStatus("主窗体激活但迷你模式未激活，状态正常");
+            }
         }
 
-        private void label3_Click(object sender, EventArgs e)
+        //从主窗体切换到迷你窗体
+        public void SwitchToMiniFromMain()
         {
-            this.textBox2.Text=this.textBox2.PlaceholderText;
+            try
+            {
+                LogStatus("开始切换到迷你模式...");
+
+                // 第一步：显示迷你模式窗口
+                ShowMiniMode();
+
+                // 等待窗口完全显示
+                Task.Delay(200).ContinueWith(_ =>
+                {
+                    this.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            // 第二步：最小化主窗体到托盘
+                            if (this.Visible && this.WindowState != FormWindowState.Minimized)
+                            {
+                                MinimizeToTray();
+                            }
+
+                            // 再次激活迷你模式窗口，确保它在前台
+                            if (miniModeForm != null && !miniModeForm.IsDisposed)
+                            {
+                                miniModeForm.Activate();
+                                miniModeForm.TopMost = true;
+                            }
+
+                            LogStatus("成功切换到迷你模式");
+                        }
+                        catch (Exception ex)
+                        {
+                            LogStatus($"切换过程中出错: {ex.Message}");
+                            isSwitchingMode = false;
+                        }
+                    }));
+                });
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"切换到迷你模式失败: {ex.Message}");
+                isSwitchingMode = false;
+            }
+        }
+
+        // 从迷你模式切换回主窗体        
+        public void SwitchToMainFromMini()
+        {
+            try
+            {
+                LogStatus("开始切换回主窗体...");
+
+                //// 确保不在切换过程中再次触发切换
+                //if (isSwitchingMode) return;
+
+                // 设置切换标志
+                isSwitchingMode = true;
+
+                // 先保存迷你窗体的引用
+                var miniFormToClose = miniModeForm;
+
+                // 恢复主窗体
+                this.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        // 确保主窗体恢复
+                        if (isMinimizedToTray || !this.Visible)
+                        {
+                            RestoreFromTray();
+                        }
+
+                        // 激活主窗体
+                        this.Show();
+                        this.WindowState = FormWindowState.Normal;
+                        this.Activate();
+                        this.Focus();
+
+                        LogStatus("主窗体已恢复");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogStatus($"恢复主窗体失败: {ex.Message}");
+                    }
+                }));
+
+                // 关闭迷你窗体（延迟执行，确保主窗体先恢复）
+                Task.Delay(300).ContinueWith(_ =>
+                {
+                    this.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            if (miniFormToClose != null && !miniFormToClose.IsDisposed)
+                            {
+                                // 解除迷你窗体的关闭事件，避免循环
+                                miniFormToClose.FormClosing -= MiniModeForm_FormClosing;
+
+                                // 直接关闭迷你窗体
+                                miniFormToClose.Close();
+                                miniFormToClose.Dispose();
+                                miniModeForm = null;
+
+                                LogStatus("迷你模式窗口已关闭");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogStatus($"关闭迷你模式窗口失败: {ex.Message}");
+                        }
+                        finally
+                        {
+                            // 重置切换标志
+                            Task.Delay(300).ContinueWith(__ =>
+                            {
+                                this.BeginInvoke(new Action(() => { isSwitchingMode = false; }));
+                            });
+                        }
+                    }));
+                });
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"切换回主窗体失败: {ex.Message}");
+                isSwitchingMode = false;
+            }
+        }
+
+        // 迷你窗体关闭中事件
+        public void MiniModeForm_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            try
+            {
+                if (sender is MiniModeForm miniForm)
+                {
+                    // 如果是用户点击关闭按钮，切换到主窗体
+                    if (e.CloseReason == CloseReason.UserClosing && !isSwitchingMode)
+                    {
+                        LogStatus("用户关闭迷你模式，切换到主窗体");
+
+                        // 取消默认关闭行为
+                        e.Cancel = true;
+
+                        // 切换到主窗体
+                        Task.Run(() => ToggleMainMiniMode());
+                    }
+                    else if (isSwitchingMode)
+                    {
+                        // 切换过程中，允许关闭
+                        LogStatus("切换过程中关闭迷你窗口");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"迷你模式关闭事件处理失败: {ex.Message}");
+            }
+        }
+
+        // 迷你窗体已关闭事件
+        public void MiniModeForm_FormClosed(object? sender, FormClosedEventArgs e)
+        {
+            try
+            {
+                if (sender is MiniModeForm miniForm)
+                {
+                    // 清理事件绑定
+                    miniForm.FormClosing -= MiniModeForm_FormClosing;
+                    miniForm.FormClosed -= MiniModeForm_FormClosed;
+
+                    // 清理引用
+                    if (miniModeForm == miniForm)
+                    {
+                        miniModeForm = null;
+                    }
+
+                    LogStatus("迷你模式窗口已完全关闭");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"迷你模式关闭后清理失败: {ex.Message}");
+            }
+        }
+
+        // 切换方法
+        private void ToggleMainMiniMode()
+        {
+            if (isSwitchingMode) return;
+
+            isSwitchingMode = true;
+
+            try
+            {
+                // 更准确的状态检查
+                bool miniModeActive = miniModeForm != null &&
+                                      !miniModeForm.IsDisposed &&
+                                      miniModeForm.Visible;
+
+                bool mainWindowActive = this.Visible &&
+                                       this.WindowState != FormWindowState.Minimized &&
+                                       !isMinimizedToTray;
+
+                LogStatus($"切换检查: 迷你模式={miniModeActive}, 主窗口={mainWindowActive}, 托盘={isMinimizedToTray}");
+
+                if (miniModeActive && !mainWindowActive)
+                {
+                    // 从迷你模式切换回主窗体
+                    LogStatus("正在从迷你模式切换到主窗体...");
+                    SwitchToMainFromMini();
+                }
+                else if (mainWindowActive && !miniModeActive)
+                {
+                    // 从主窗体切换到迷你模式
+                    LogStatus("正在从主窗体切换到迷你模式...");
+                    SwitchToMiniFromMain();
+                }
+                else if (isMinimizedToTray)
+                {
+                    // 如果只在托盘中，恢复主窗体
+                    LogStatus("从托盘恢复主窗体...");
+                    RestoreFromTray();
+                }
+                else
+                {
+                    // 状态异常，进行修复
+                    LogStatus("检测到异常状态，进行修复...");
+                    FixWindowStates();
+                }
+            }
+            finally
+            {
+                // 延迟重置标志，确保切换完成
+                Task.Delay(500).ContinueWith(_ =>
+                {
+                    this.BeginInvoke(new Action(() =>
+                    {
+                        isSwitchingMode = false;
+                        LogStatus("切换过程完成");
+                    }));
+                });
+            }
+        }
+
+        // 主窗体最小化到托盘
+        public void MinimizeToTray()
+        {
+            try
+            {
+                if (this.Visible && this.WindowState != FormWindowState.Minimized)
+                {
+                    this.Hide();
+                    this.WindowState = FormWindowState.Minimized;
+                    isMinimizedToTray = true;
+                    LogStatus("主窗体已最小化到托盘");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"最小化到托盘失败: {ex.Message}");
+            }
+        }
+        ////迷你窗体关闭
+        //public void CloseMiniForm()
+        //{
+        //    this.BeginInvoke(new Action(() =>
+        //    {
+        //        try
+        //        {
+        //            if (this.miniModeForm != null && !this.miniModeForm.IsDisposed)
+        //            {
+        //                LogStatus("正在关闭迷你模式窗口...");
+
+        //                // 停止迷你窗体的定时器
+        //                if (this.miniModeForm is MiniModeForm miniForm)
+        //                {
+        //                    miniForm.StopTimer();
+        //                    miniForm.AllowClose();
+        //                }
+
+        //                // 解除事件绑定
+        //                this.miniModeForm.FormClosing -= MiniModeForm_FormClosing;
+        //                this.miniModeForm.FormClosed -= MiniModeForm_FormClosed;
+
+        //                // 关闭窗体
+        //                this.miniModeForm.Close();
+
+        //                // 清理资源
+        //                this.miniModeForm.Dispose();
+        //                this.miniModeForm = null;
+
+        //                LogStatus("迷你模式窗口已关闭");
+        //            }
+        //        }
+        //        catch (ObjectDisposedException)
+        //        {
+        //            // 忽略已释放对象的异常
+        //            LogStatus("迷你模式窗口已释放");
+        //            miniModeForm = null;
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            LogStatus($"关闭迷你模式窗口失败: {ex.Message}");
+        //            // 强制清理引用
+        //            miniModeForm = null;
+        //        }
+        //    }));
+        //}
+        //// 在更新迷你窗体状态的地方添加检查
+        //public void UpdateMiniModeStatus()
+        //{
+        //    try
+        //    {
+        //        if (miniModeForm != null && !miniModeForm.IsDisposed && miniModeForm.Visible)
+        //        {
+        //            // 更新迷你窗体的状态
+        //            // ...
+        //        }
+        //    }
+        //    catch (ObjectDisposedException)
+        //    {
+        //        // 如果对象已释放，清理引用
+        //        miniModeForm = null;
+        //    }
+        //}
+        //public void QuickCloseMiniForm()
+        //{
+        //    this.BeginInvoke(new Action(() =>
+        //    {
+        //        if (miniModeForm != null && !miniModeForm.IsDisposed)
+        //        {
+        //            try
+        //            {
+        //                // 直接强制关闭，不处理事件
+        //                miniModeForm.FormClosing -= MiniModeForm_FormClosing;
+        //                miniModeForm.FormClosed -= MiniModeForm_FormClosed;
+
+        //                // 使用更强制的方式关闭
+        //                miniModeForm.Dispose();
+        //                miniModeForm = null;
+
+        //                LogStatus("迷你模式窗口已强制关闭");
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                LogStatus($"强制关闭迷你模式窗口失败: {ex.Message}");
+        //                miniModeForm = null;
+        //            }
+        //        }
+        //    }));
+        //}
+        // 主窗体恢复可见
+        public void RestoreFromTray()
+        {
+            try
+            {
+                if (isMinimizedToTray || !this.Visible)
+                {
+                    this.Show();
+                    this.WindowState = FormWindowState.Normal;
+                    this.Activate();
+                    isMinimizedToTray = false;
+                    LogStatus("主窗体已从托盘恢复");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"从托盘恢复失败: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region 传递状态给迷你窗口
+
+        // 公开的获取朗读状态的方法，供迷你模式窗口使用        
+        public bool GetSpeakingStatus() => isSpeaking;
+
+        // 公开的获取当前章节的方法，供迷你模式窗口使用
+        public string GetCurrentChapter() => CurrentChapter_toolStripStatusLabel.Text;
+
+        // 公开的获取当前朗读文本的方法，供迷你模式窗口使用
+        public string GetCurrentReadingText()
+        {
+            if (currentLineIndex >= 0 && currentLineIndex < ChapterContent_richTextBox.Lines.Length)
+            {
+                string lineText = ChapterContent_richTextBox.Lines[currentLineIndex];
+                if (lineText.Length > 50)
+                {
+                    return lineText.Substring(0, 47) + "...";
+                }
+                return lineText;
+            }
+            return "等待开始...";
+        }
+
+        // 公开的开始朗读方法，供迷你模式窗口使用
+        public void StartReadingFromMini() => StartRead();
+
+        // 公开的暂停朗读方法，供迷你模式窗口使用
+        public void StopReadingFromMini() => StopRead();
+
+        // 公开的下一章方法，供迷你模式窗口使用
+        public void NextChapterFromMini() => NextChapter_toolStripButton_Click(null, null);
+
+        // 切换迷你模式的置顶状态
+        public void ToggleMiniModeTopMost()
+        {
+            if (miniModeForm != null && !miniModeForm.IsDisposed)
+            {
+                miniModeForm.ToggleTopMost();
+                LogStatus($"迷你模式窗口已{(miniModeForm.IsTopMost() ? "置顶" : "取消置顶")}");
+            }
+            else
+            {
+                LogStatus("迷你模式窗口未打开");
+            }
+        }
+        #endregion
+        #region 快捷键设置相关方法
+
+        // 为每个菜单项添加点击事件处理程序
+        private void 窗体切换ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ShowHotkeyInputDialog("ToggleMode", "窗体切换", Winswitch_shortcut_toolStripTextBox);
+        }
+
+        private void 最小化ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ShowHotkeyInputDialog("MinimizeOrClose", "最小化", Minimize_shortcut_toolStripTextBox);
+        }
+
+        private void 迷你窗体置顶ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ShowHotkeyInputDialog("ToggleTopMost", "迷你窗体置顶", MinTop_shortcut_toolStripTextBox);
+        }
+
+        private void 开始朗读ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ShowHotkeyInputDialog("StartReading", "开始朗读", Startreading_shortcut_toolStripTextBox);
+        }
+
+        private void 暂停朗读ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ShowHotkeyInputDialog("StopReading", "暂停朗读", Pausereading_shortcut_toolStripTextBox);
+        }
+
+        private void 下一章ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ShowHotkeyInputDialog("NextChapter", "下一章", Nextchapterreading_shortcut_toolStripTextBox);
+        }
+
+        // 通用的显示热键输入对话框方法
+        private void ShowHotkeyInputDialog(string actionName, string actionDescription, ToolStripTextBox targetTextBox)
+        {
+            try
+            {
+                // 获取当前的热键设置
+                string currentHotkey = targetTextBox.Text;
+
+                // 显示热键输入对话框
+                using (HotkeyInputForm form = new HotkeyInputForm(currentHotkey))
+                {
+                    if (form.ShowDialog() == DialogResult.OK)
+                    {
+                        string newHotkey = form.HotkeyString;
+
+                        if (!string.IsNullOrEmpty(newHotkey))
+                        {
+                            // 更新文本框
+                            targetTextBox.Text = newHotkey;
+
+                            // 更新热键管理器
+                            if (hotkeyManager != null)
+                            {
+                                bool success = hotkeyManager.SetHotkey(actionName, newHotkey);
+                                if (success)
+                                {
+                                    // 更新patternConfig
+                                    if (patternConfig != null && patternConfig.Hotkeys != null)
+                                    {
+                                        patternConfig.Hotkeys[actionName] = newHotkey;
+                                    }
+
+                                    LogStatus($"{actionDescription}快捷键已设置为: {newHotkey}");
+                                }
+                                else
+                                {
+                                    LogStatus($"设置{actionDescription}快捷键失败");
+                                }
+                            }
+                            else
+                            {
+                                LogStatus("热键管理器未初始化");
+                            }
+                        }
+                        else
+                        {
+                            // 清空热键
+                            targetTextBox.Text = "";
+                            if (hotkeyManager != null)
+                            {
+                                hotkeyManager.SetHotkey(actionName, "");
+                            }
+                            LogStatus($"{actionDescription}快捷键已清除");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"设置快捷键时出错: {ex.Message}");
+                MessageBox.Show($"设置快捷键时出错: {ex.Message}", "错误",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        #endregion
+        private void 重置默认ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
