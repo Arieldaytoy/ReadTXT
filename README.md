@@ -37,11 +37,12 @@
 
 ### 3.1 界面
 ![项目界面](StartView.png)
-
+![迷你窗口界面](MiniView.png)
 ### 3.2 设置
 
-#### 3.2.1 章节规则-通过正则表达匹配
-1 默认规则：第\d{4}章，用于匹配以“第”字开头，紧接着是四个连续数字，然后是“章”字的字符串。比如：“第0001章”；
+### 3.2.1 章节规则-通过正则表达匹配
+1 默认规则：第([一二两三四五六七八九十零百千万\d]+)章|番外 ([一二两三四五六七八九十零百千万\d]+)
+   可以匹配：第1章、第一章、番外 一、番外 1，等章节格式；
 2 其他规则：按需自己设置哈。
 3 如果章节没有规律的话，那就没法分章了。你可能需要自己编辑原文，设置章节。或者删除规则，那样就会读取全文。
  
@@ -53,27 +54,32 @@
 点击可以保存当前的设置，会自动生成一个名为“mySet.json”的文件。
 初始内容如下：每项的说明看//后的说明~~
 {
-  "Patterns": [
+  "patterns": [
     {
-      "textBox1Pattern": "",//上次保存的文件路径
-      "textBox2Pattern": "\u7B2C\\d{4}\u7AE0",//章节规则-默认为“第\d{4}章”，为什么不是中文，因为中文转换为JSON标准格式后就这样啦
-      "toolStripComboBox1Pattern": "5",//语速
-      "toolStripComboBox2Pattern": "\u81EA\u52A8\u6574\u884C",//朗读模式
-      "toolStripLabel6Pattern": "",//上次阅读的章节
-      "FontName": "Microsoft YaHei UI",//正文字体名称
-      "FontStyle": 0,//正文字体格式
-      "FontSize": 11.25,//正文字体大小
-      "BlackColor": {//这里一整串是正文和目录背景色
-        "R": 255,
-        "G": 255,
-        "B": 255,
-        "A": 255,
-        "IsKnownColor": true,
-        "IsEmpty": false,
-        "IsNamedColor": true,
-        "IsSystemColor": true,
-        "Name": "Window"
-      }
+      "txtPathTextBoxPattern": "",//文档路径
+      "ruleTextBoxPattern": "\u7B2C([\u4E00\u4E8C\u4E24\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u96F6\u767E\u5343\u4E07\\d]\u002B)\u7AE0|\u756A\u5916 ([\u4E00\u4E8C\u4E24\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u96F6\u767E\u5343\u4E07\\d]\u002B)",//章节规则
+      "speedToolStripComboBoxPattern": "5",//语速
+      "readModeToolStripComboBoxPattern": "\u6574\u884C",//朗读模式
+      "currentChapterToolStripStatusLabelPattern": "",//当前章节
+      "currentLineToolStripStatusLabelPattern": "0",//当前行
+      "fontName": "Microsoft YaHei UI",//字体名称
+      "fontStyle": 0,
+      "fontSize": 11.25,//字号大小
+      "blackColor": {
+        "r": 255,
+        "g": 255,
+        "b": 255,
+        "a": 255
+      },//背景色
+      "hotkeysForJson": {
+        "ToggleMode": "Ctrl\u002BAlt\u002BM",
+        "MinimizeOrClose": "Ctrl\u002BAlt\u002BX",
+        "ToggleTopMost": "Ctrl\u002BAlt\u002BT",
+        "StartReading": "Ctrl\u002BAlt\u002BK",
+        "StopReading": "Ctrl\u002BAlt\u002BZ",
+        "NextChapter": "Ctrl\u002BAlt\u002BN",
+        "SaveDocument": "Ctrl\u002BAlt\u002BS"
+      }//快捷键
     }
   ]
 }
@@ -87,8 +93,16 @@
 根据上面设置的章节规则匹配后会在目录栏加载所有匹配到的章节名称，点击章节正文就会在右边显示啦
 
 ### 3.2.7 设置按钮
-包含可设置的内容有：字体，背景色，语音包。
+包含可设置的内容有：字体，背景色，语音包，快捷键。
 
+#### 快捷键说明
+   窗口切换：Ctrl+Alt+M,
+   窗口最小化：Ctrl+Alt+X,
+   置顶迷你窗口：Ctrl+Alt+T,
+   开始朗读：Ctrl+K,
+   暂停朗读：Ctrl+Z,
+   下一章：Ctrl+N,
+   保存文档编辑：Ctrl+Alt+S
 ### 3.2.8 语速
 支持-10~10之间的整数的调整。
 
@@ -104,6 +118,12 @@
 ### 3.2.12 上次章节
 如果是载入的话这里显示的是上次的章节，如果点击目录了，就是当前的章节。这里主要是为了保存设置。
 
+### 3.3 迷你窗体按钮说明
+   暂停/继续：开启/暂停朗读；
+   下一章：调转到下一章开始朗读；
+   主窗口：切换到主窗口
+   置顶/不置顶：迷你窗体置顶/不置顶；
+
 ## 四、资源使用
 本项目内使用的部分包括但不限于字体、图片等资源来源于互联网。如果出现侵权可联系本项目移除。
 
@@ -114,7 +134,7 @@
 
 ## 六、其他
 如果有其他需求或问题可以说明，但是不一定更新哈。毕竟能力有限。实在抱歉啦，哈哈哈哈哈
-版本：0.0.0.0
+版本：0.0.0.4
 
 
 

@@ -100,7 +100,7 @@ namespace ReadTXT
             return key.ToString();
         }
 
-        private void HotkeyInputForm_KeyDown(object sender, KeyEventArgs e)
+        private void HotkeyInputForm_KeyDown(object? sender, KeyEventArgs e)
         {
             // 更新修饰键状态
             UpdateModifierState(e.KeyCode, true);
@@ -116,7 +116,7 @@ namespace ReadTXT
             e.SuppressKeyPress = true;
         }
 
-        private void HotkeyInputForm_KeyUp(object sender, KeyEventArgs e)
+        private void HotkeyInputForm_KeyUp(object? sender, KeyEventArgs e)
         {
             // 更新修饰键状态
             UpdateModifierState(e.KeyCode, false);
@@ -159,7 +159,7 @@ namespace ReadTXT
                    key == Keys.LWin || key == Keys.RWin;
         }
 
-        private void okButton_Click(object sender, EventArgs e)
+        private void OkButton_Click(object? sender, EventArgs e)
         {
             // 验证热键
             if (primaryKey.HasValue)
@@ -174,14 +174,14 @@ namespace ReadTXT
             }
         }
 
-        private void cancelButton_Click(object sender, EventArgs e)
+        private void CancelButton_Click(object? sender, EventArgs e)
         {
             HotkeyString = string.Empty;
             this.DialogResult = DialogResult.Cancel;
             this.Close();
         }
 
-        private void clearButton_Click(object sender, EventArgs e)
+        private void ClearButton_Click(object? sender, EventArgs e)
         {
             // 清除当前设置
             ctrlPressed = false;
@@ -226,7 +226,7 @@ namespace ReadTXT
             this.okButton.TabIndex = 2;
             this.okButton.Text = "确定";
             this.okButton.UseVisualStyleBackColor = true;
-            this.okButton.Click += new System.EventHandler(this.okButton_Click);
+            this.okButton.Click += new System.EventHandler(this.OkButton_Click);
 
             // clearButton
             this.clearButton.Location = new System.Drawing.Point(93, 90);
@@ -235,7 +235,7 @@ namespace ReadTXT
             this.clearButton.TabIndex = 3;
             this.clearButton.Text = "清除";
             this.clearButton.UseVisualStyleBackColor = true;
-            this.clearButton.Click += new System.EventHandler(this.clearButton_Click);
+            this.clearButton.Click += new System.EventHandler(this.ClearButton_Click);
 
             // cancelButton
             this.cancelButton.Location = new System.Drawing.Point(174, 90);
@@ -244,7 +244,7 @@ namespace ReadTXT
             this.cancelButton.TabIndex = 4;
             this.cancelButton.Text = "取消";
             this.cancelButton.UseVisualStyleBackColor = true;
-            this.cancelButton.Click += new System.EventHandler(this.cancelButton_Click);
+            this.cancelButton.Click += new System.EventHandler(this.CancelButton_Click);
 
             // HotkeyInputForm
             this.ClientSize = new System.Drawing.Size(260, 135);

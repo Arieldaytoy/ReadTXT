@@ -35,9 +35,9 @@ namespace ReadTXT
                     { "ToggleMode", "Ctrl+Alt+M" },
                     { "MinimizeOrClose", "Ctrl+Alt+X" },
                     { "ToggleTopMost", "Ctrl+Alt+T" },
-                    { "StartReading", "Ctrl+Alt+K" },
-                    { "StopReading", "Ctrl+Alt+Z" },
-                    { "NextChapter", "Ctrl+Alt+N" },
+                    { "StartReading", "Ctrl+K" },
+                    { "StopReading", "Ctrl+Z" },
+                    { "NextChapter", "Ctrl+N" },
                     { "SaveDocument", "Ctrl+Alt+S" }
                 };
             }

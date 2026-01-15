@@ -36,14 +36,19 @@ namespace ReadTXT
         private HotkeyManager hotkeyManager;
 
         // 添加全局键盘钩子
-
         private GlobalKeyboardHook? keyboardHook = null;
-        //private DateTime lastKeyPressTime = DateTime.MinValue;
-        //private Keys lastKeyCode = Keys.None;
-        //private bool isKeyProcessed = false;
 
-        // 快捷键处理标志
-        //private bool isProcessingHotkey = false;
+        // 默认快捷键字典
+        private static readonly Dictionary<string, string> DefaultHotkeys = new()
+        {
+            { "ToggleMode", "Ctrl+Alt+M" },
+            { "MinimizeOrClose", "Ctrl+Alt+X" },
+            { "ToggleTopMost", "Ctrl+Alt+T" },
+            { "StartReading", "Ctrl+K" },
+            { "StopReading", "Ctrl+Z" },
+            { "NextChapter", "Ctrl+N" },
+            { "SaveDocument", "Ctrl+Alt+S" }
+        };
 
         // 切换方法，添加状态标志避免竞态条件
         public bool isSwitchingMode = false;
@@ -99,18 +104,8 @@ namespace ReadTXT
             public required BlackColor BlackColor { get; set; }
 
             [JsonPropertyName("hotkeysForJson")]
-            public Dictionary<string, string> HotkeysForJson { get; set; } = new()
-            {
-                { "ToggleMode", "Ctrl+Alt+M" },
-                { "MinimizeOrClose", "Ctrl+Alt+X" },
-                { "ToggleTopMost", "Ctrl+Alt+T" },
-                { "StartReading", "Ctrl+Alt+K" },
-                { "StopReading", "Ctrl+Alt+Z" },
-                { "NextChapter", "Ctrl+Alt+N" },
-                { "SaveDocument", "Ctrl+Alt+S" }
-            };
+            public Dictionary<string, string> HotkeysForJson { get; set; } = new(ReadTXT.DefaultHotkeys);
 
-            // 这个属性用于代码内部使用，不直接序列化
             [JsonIgnore]
             public Dictionary<string, string> Hotkeys
             {
@@ -192,7 +187,7 @@ namespace ReadTXT
         }
 
         #endregion
-        
+
         #region 热键管理器初始化
         private void InitializeHotkeys()
         {
@@ -203,16 +198,7 @@ namespace ReadTXT
                 patternConfig = new PatternItem
                 {
                     BlackColor = new BlackColor { R = 255, G = 255, B = 255, A = 255 },
-                    Hotkeys = new Dictionary<string, string>
-            {
-                { "ToggleMode", "Ctrl+Alt+M" },
-                { "MinimizeOrClose", "Ctrl+Alt+X" },
-                { "ToggleTopMost", "Ctrl+Alt+T" },
-                { "StartReading", "Ctrl+Alt+K" },
-                { "StopReading", "Ctrl+Alt+Z" },
-                { "NextChapter", "Ctrl+Alt+N" },
-                { "SaveDocument", "Ctrl+Alt+S" }
-            }
+                    Hotkeys = new Dictionary<string, string>(DefaultHotkeys)
                 };
             }
 
@@ -243,7 +229,7 @@ namespace ReadTXT
         }
         #endregion
 
-        
+
 
         #region 工具栏按钮事件
 
@@ -452,7 +438,7 @@ namespace ReadTXT
         #endregion
 
         #region 选中章节，加载对应正文        
-        private void ListBox1_SelectedIndexChanged(object? sender, EventArgs e)
+        private void Chapter_listBox_SelectedIndexChanged(object? sender, EventArgs e)
         {
             if (this.CurrentChapter_toolStripStatusLabel.Text != null)
             {
@@ -508,6 +494,10 @@ namespace ReadTXT
         #region 程序退出事件
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            // 释放键盘钩子
+            keyboardHook?.Dispose();
+            keyboardHook = null;
+
             // 只有当用户点击关闭按钮时才最小化到托盘
             if (e.CloseReason == CloseReason.UserClosing)
             {
@@ -518,6 +508,7 @@ namespace ReadTXT
 
             // 其他关闭原因（如系统关闭、任务管理器结束等）正常关闭
             base.OnFormClosing(e);
+            notifyIcon1.Visible=false;
         }
 
         #endregion
@@ -620,28 +611,20 @@ namespace ReadTXT
 
                     // 保存到patternConfig字段
                     patternConfig = firstPattern;
-                                        
-                    // 确保Hotkeys不为空
+
+                    // 确保Hotkeys不为空 - 修改这里
                     if (patternConfig.Hotkeys == null || patternConfig.Hotkeys.Count == 0)
                     {
-                        patternConfig.Hotkeys = new Dictionary<string, string>
-                        {
-                            { "ToggleMode", "Ctrl+Alt+M" },
-                            { "MinimizeOrClose", "Ctrl+Alt+X" },
-                            { "ToggleTopMost", "Ctrl+Alt+T" },
-                            { "StartReading", "Ctrl+Alt+K" },
-                            { "StopReading", "Ctrl+Alt+Z" },
-                            { "NextChapter", "Ctrl+Alt+N" },
-                            { "SaveDocument", "Ctrl+Alt+S" }
-                        };
+                        patternConfig.Hotkeys = new Dictionary<string, string>(DefaultHotkeys);
                     }
+
                     // 更新文本框显示
                     UpdateHotkeyTextBoxes();
                 }
                 else
                 {
-                    this.LogStatus_toolStripStatusLabel.Text = "JSON文件中没有有效的规则设置。";
-                    this.LogStatus_toolStripStatusLabel.ForeColor = Color.Red;
+                    this.LogStatus_toolStripStatusLabel.Text = "JSON文件中没有有效的规则设置，正在创建默认配置文件...";                    
+                    CreateDefaultConfig();
                 }
             }
             else
@@ -692,7 +675,7 @@ namespace ReadTXT
                 {
                     LoadFileContent(filePath);
                     PopulateListBox();
-                    Chapter_listBox.SelectedIndexChanged += ListBox1_SelectedIndexChanged;
+                    Chapter_listBox.SelectedIndexChanged += Chapter_listBox_SelectedIndexChanged;
                     if (this.Chapter_listBox.Items.Count > 0)
                     {
                         if (this.CurrentChapter_toolStripStatusLabel.Text == "")
@@ -845,6 +828,29 @@ namespace ReadTXT
             }
         }
 
+        private void CreateDefaultConfig()
+        {
+            patternConfig = new PatternItem
+            {
+                TXTPath_textBoxPattern = "",
+                Rule_textBoxPattern = "",
+                Speed_toolStripComboBoxPattern = "0",
+                ReadMode_toolStripComboBoxPattern = "整行",
+                CurrentChapter_toolStripStatusLabelPattern = "",
+                CurrentLine_toolStripStatusLabelPattern = "0",
+                FontName = "Microsoft YaHei UI",
+                FontStyle = 0,
+                FontSize = 12.0,
+                BlackColor = new BlackColor { R = 199, G = 237, B = 204, A = 255 },
+                HotkeysForJson = new Dictionary<string, string>(DefaultHotkeys)
+            };
+
+            // 更新文本框
+            UpdateHotkeyTextBoxes();
+
+            LogStatus("已创建默认配置文件");
+        }
+
         // 更新热键文本框显示
         private void UpdateHotkeyTextBoxes()
         {
@@ -869,7 +875,7 @@ namespace ReadTXT
 
             if (patternConfig.Hotkeys.TryGetValue("NextChapter", out string nextChapterHotkey))
                 Nextchapterreading_shortcut_toolStripTextBox.Text = nextChapterHotkey;
-            
+
         }
 
         //日志信息
@@ -1227,9 +1233,6 @@ namespace ReadTXT
                     patternConfig = patterns.Patterns[0];
                     if (hotkeyManager != null)
                     {
-                        // 重新加载配置
-                        // 注意：这里需要为HotkeyManager添加ReloadConfig方法
-                        // 或者重新创建HotkeyManager实例
                         hotkeyManager = new HotkeyManager(this, patternConfig);
                     }
                 }
@@ -1746,6 +1749,7 @@ namespace ReadTXT
             }
         }
         #endregion
+
         #region 快捷键设置相关方法
 
         // 为每个菜单项添加点击事件处理程序
@@ -1779,6 +1783,85 @@ namespace ReadTXT
             ShowHotkeyInputDialog("NextChapter", "下一章", Nextchapterreading_shortcut_toolStripTextBox);
         }
 
+        private void 重置默认ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // 显示确认对话框
+                DialogResult result = MessageBox.Show(
+                    "确定要将所有快捷键重置为默认值吗？",
+                    "重置快捷键",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    ResetAllHotkeysToDefault();
+                    LogStatus("快捷键已重置为默认值");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"重置快捷键时出错: {ex.Message}");
+                MessageBox.Show($"重置快捷键时出错: {ex.Message}", "错误",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        
+
+        // 重置所有快捷键为默认值
+        private void ResetAllHotkeysToDefault()
+        {
+            // 1. 更新各个文本框
+            if (DefaultHotkeys.TryGetValue("ToggleMode", out string toggleModeHotkey))
+                Winswitch_shortcut_toolStripTextBox.Text = toggleModeHotkey;
+
+            if (DefaultHotkeys.TryGetValue("MinimizeOrClose", out string minimizeHotkey))
+                Minimize_shortcut_toolStripTextBox.Text = minimizeHotkey;
+
+            if (DefaultHotkeys.TryGetValue("ToggleTopMost", out string topMostHotkey))
+                MinTop_shortcut_toolStripTextBox.Text = topMostHotkey;
+
+            if (DefaultHotkeys.TryGetValue("StartReading", out string startReadingHotkey))
+                Startreading_shortcut_toolStripTextBox.Text = startReadingHotkey;
+
+            if (DefaultHotkeys.TryGetValue("StopReading", out string stopReadingHotkey))
+                Pausereading_shortcut_toolStripTextBox.Text = stopReadingHotkey;
+
+            if (DefaultHotkeys.TryGetValue("NextChapter", out string nextChapterHotkey))
+                Nextchapterreading_shortcut_toolStripTextBox.Text = nextChapterHotkey;
+
+            if (DefaultHotkeys.TryGetValue("SaveDocument", out string saveDocumentHotkey))
+            {
+                // 如果有保存文档的热键文本框
+                // Save_shortcut_toolStripTextBox.Text = saveDocumentHotkey;
+            }
+
+            // 2. 更新热键管理器
+            if (hotkeyManager != null)
+            {
+                foreach (var hotkey in DefaultHotkeys)
+                {
+                    hotkeyManager.SetHotkey(hotkey.Key, hotkey.Value);
+                }
+            }
+
+            // 3. 更新patternConfig
+            if (patternConfig != null)
+            {
+                if (patternConfig.HotkeysForJson == null)
+                {
+                    patternConfig.HotkeysForJson = new Dictionary<string, string>();
+                }
+
+                foreach (var hotkey in DefaultHotkeys)
+                {
+                    patternConfig.HotkeysForJson[hotkey.Key] = hotkey.Value;
+                }
+            }
+        }
+
         // 通用的显示热键输入对话框方法
         private void ShowHotkeyInputDialog(string actionName, string actionDescription, ToolStripTextBox targetTextBox)
         {
@@ -1794,45 +1877,11 @@ namespace ReadTXT
                     {
                         string newHotkey = form.HotkeyString;
 
-                        if (!string.IsNullOrEmpty(newHotkey))
-                        {
-                            // 更新文本框
-                            targetTextBox.Text = newHotkey;
+                        // 更新文本框
+                        targetTextBox.Text = newHotkey;
 
-                            // 更新热键管理器
-                            if (hotkeyManager != null)
-                            {
-                                bool success = hotkeyManager.SetHotkey(actionName, newHotkey);
-                                if (success)
-                                {
-                                    // 更新patternConfig
-                                    if (patternConfig != null && patternConfig.Hotkeys != null)
-                                    {
-                                        patternConfig.Hotkeys[actionName] = newHotkey;
-                                    }
-
-                                    LogStatus($"{actionDescription}快捷键已设置为: {newHotkey}");
-                                }
-                                else
-                                {
-                                    LogStatus($"设置{actionDescription}快捷键失败");
-                                }
-                            }
-                            else
-                            {
-                                LogStatus("热键管理器未初始化");
-                            }
-                        }
-                        else
-                        {
-                            // 清空热键
-                            targetTextBox.Text = "";
-                            if (hotkeyManager != null)
-                            {
-                                hotkeyManager.SetHotkey(actionName, "");
-                            }
-                            LogStatus($"{actionDescription}快捷键已清除");
-                        }
+                        // 更新热键管理器和配置
+                        UpdateHotkeyConfiguration(actionName, newHotkey, actionDescription);
                     }
                 }
             }
@@ -1844,10 +1893,37 @@ namespace ReadTXT
             }
         }
 
-        #endregion
-        private void 重置默认ToolStripMenuItem_Click(object sender, EventArgs e)
+        // 更新配置方法
+        private void UpdateHotkeyConfiguration(string actionName, string hotkeyString, string actionDescription)
         {
+            if (hotkeyManager != null)
+            {
+                bool success = hotkeyManager.SetHotkey(actionName, hotkeyString);
+                if (success)
+                {
+                    // 更新patternConfig
+                    if (patternConfig != null)
+                    {
+                        if (patternConfig.HotkeysForJson == null)
+                            patternConfig.HotkeysForJson = new Dictionary<string, string>();
 
+                        patternConfig.HotkeysForJson[actionName] = hotkeyString;
+                    }
+
+                    LogStatus($"{actionDescription}快捷键已设置为: {hotkeyString}");
+                }
+                else
+                {
+                    LogStatus($"设置{actionDescription}快捷键失败");
+                }
+            }
+            else
+            {
+                LogStatus("热键管理器未初始化");
+            }
         }
+
+        #endregion
+
     }
 }

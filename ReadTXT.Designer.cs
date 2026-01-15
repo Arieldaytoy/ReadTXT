@@ -260,35 +260,35 @@
             // 背景色ToolStripMenuItem
             // 
             背景色ToolStripMenuItem.Name = "背景色ToolStripMenuItem";
-            背景色ToolStripMenuItem.Size = new Size(180, 22);
+            背景色ToolStripMenuItem.Size = new Size(112, 22);
             背景色ToolStripMenuItem.Text = "背景色";
             背景色ToolStripMenuItem.Click += 背景色ToolStripMenuItem_Click;
             // 
             // 字体ToolStripMenuItem
             // 
             字体ToolStripMenuItem.Name = "字体ToolStripMenuItem";
-            字体ToolStripMenuItem.Size = new Size(180, 22);
+            字体ToolStripMenuItem.Size = new Size(112, 22);
             字体ToolStripMenuItem.Text = "字体";
             字体ToolStripMenuItem.Click += 字体ToolStripMenuItem_Click;
             // 
             // 语音包ToolStripMenuItem
             // 
             语音包ToolStripMenuItem.Name = "语音包ToolStripMenuItem";
-            语音包ToolStripMenuItem.Size = new Size(180, 22);
+            语音包ToolStripMenuItem.Size = new Size(112, 22);
             语音包ToolStripMenuItem.Text = "语音包";
             // 
             // 快捷键ToolStripMenuItem
             // 
             快捷键ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 窗体切换ToolStripMenuItem, 最小化ToolStripMenuItem, 迷你窗体置顶ToolStripMenuItem, 开始朗读ToolStripMenuItem, 暂停朗读ToolStripMenuItem, 下一章ToolStripMenuItem, toolStripSeparator6, 重置默认ToolStripMenuItem });
             快捷键ToolStripMenuItem.Name = "快捷键ToolStripMenuItem";
-            快捷键ToolStripMenuItem.Size = new Size(180, 22);
+            快捷键ToolStripMenuItem.Size = new Size(112, 22);
             快捷键ToolStripMenuItem.Text = "快捷键";
             // 
             // 窗体切换ToolStripMenuItem
             // 
             窗体切换ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { Winswitch_shortcut_toolStripTextBox });
             窗体切换ToolStripMenuItem.Name = "窗体切换ToolStripMenuItem";
-            窗体切换ToolStripMenuItem.Size = new Size(180, 22);
+            窗体切换ToolStripMenuItem.Size = new Size(148, 22);
             窗体切换ToolStripMenuItem.Text = "窗体切换";
             窗体切换ToolStripMenuItem.Click += 窗体切换ToolStripMenuItem_Click;
             // 
@@ -304,7 +304,7 @@
             // 
             最小化ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { Minimize_shortcut_toolStripTextBox });
             最小化ToolStripMenuItem.Name = "最小化ToolStripMenuItem";
-            最小化ToolStripMenuItem.Size = new Size(180, 22);
+            最小化ToolStripMenuItem.Size = new Size(148, 22);
             最小化ToolStripMenuItem.Text = "最小化";
             最小化ToolStripMenuItem.Click += 最小化ToolStripMenuItem_Click;
             // 
@@ -320,7 +320,7 @@
             // 
             迷你窗体置顶ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { MinTop_shortcut_toolStripTextBox });
             迷你窗体置顶ToolStripMenuItem.Name = "迷你窗体置顶ToolStripMenuItem";
-            迷你窗体置顶ToolStripMenuItem.Size = new Size(180, 22);
+            迷你窗体置顶ToolStripMenuItem.Size = new Size(148, 22);
             迷你窗体置顶ToolStripMenuItem.Text = "迷你窗体置顶";
             迷你窗体置顶ToolStripMenuItem.Click += 迷你窗体置顶ToolStripMenuItem_Click;
             // 
@@ -336,7 +336,7 @@
             // 
             开始朗读ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { Startreading_shortcut_toolStripTextBox });
             开始朗读ToolStripMenuItem.Name = "开始朗读ToolStripMenuItem";
-            开始朗读ToolStripMenuItem.Size = new Size(180, 22);
+            开始朗读ToolStripMenuItem.Size = new Size(148, 22);
             开始朗读ToolStripMenuItem.Text = "开始朗读";
             开始朗读ToolStripMenuItem.Click += 开始朗读ToolStripMenuItem_Click;
             // 
@@ -345,14 +345,14 @@
             Startreading_shortcut_toolStripTextBox.Name = "Startreading_shortcut_toolStripTextBox";
             Startreading_shortcut_toolStripTextBox.ReadOnly = true;
             Startreading_shortcut_toolStripTextBox.Size = new Size(100, 23);
-            Startreading_shortcut_toolStripTextBox.Tag = "Ctrl+Alt+K";
-            Startreading_shortcut_toolStripTextBox.Text = "Ctrl+Alt+K";
+            Startreading_shortcut_toolStripTextBox.Tag = "Ctrl+K";
+            Startreading_shortcut_toolStripTextBox.Text = "Ctrl+K";
             // 
             // 暂停朗读ToolStripMenuItem
             // 
             暂停朗读ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { Pausereading_shortcut_toolStripTextBox });
             暂停朗读ToolStripMenuItem.Name = "暂停朗读ToolStripMenuItem";
-            暂停朗读ToolStripMenuItem.Size = new Size(180, 22);
+            暂停朗读ToolStripMenuItem.Size = new Size(148, 22);
             暂停朗读ToolStripMenuItem.Text = "暂停朗读";
             暂停朗读ToolStripMenuItem.Click += 暂停朗读ToolStripMenuItem_Click;
             // 
@@ -361,14 +361,14 @@
             Pausereading_shortcut_toolStripTextBox.Name = "Pausereading_shortcut_toolStripTextBox";
             Pausereading_shortcut_toolStripTextBox.ReadOnly = true;
             Pausereading_shortcut_toolStripTextBox.Size = new Size(100, 23);
-            Pausereading_shortcut_toolStripTextBox.Tag = "Ctrl+Alt+Z";
-            Pausereading_shortcut_toolStripTextBox.Text = "Ctrl+Alt+Z";
+            Pausereading_shortcut_toolStripTextBox.Tag = "Ctrl+Z";
+            Pausereading_shortcut_toolStripTextBox.Text = "Ctrl+Z";
             // 
             // 下一章ToolStripMenuItem
             // 
             下一章ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { Nextchapterreading_shortcut_toolStripTextBox });
             下一章ToolStripMenuItem.Name = "下一章ToolStripMenuItem";
-            下一章ToolStripMenuItem.Size = new Size(180, 22);
+            下一章ToolStripMenuItem.Size = new Size(148, 22);
             下一章ToolStripMenuItem.Text = "下一章";
             下一章ToolStripMenuItem.Click += 下一章ToolStripMenuItem_Click;
             // 
@@ -377,18 +377,18 @@
             Nextchapterreading_shortcut_toolStripTextBox.Name = "Nextchapterreading_shortcut_toolStripTextBox";
             Nextchapterreading_shortcut_toolStripTextBox.ReadOnly = true;
             Nextchapterreading_shortcut_toolStripTextBox.Size = new Size(100, 23);
-            Nextchapterreading_shortcut_toolStripTextBox.Tag = "Ctrl+Alt+N";
-            Nextchapterreading_shortcut_toolStripTextBox.Text = "Ctrl+Alt+N";
+            Nextchapterreading_shortcut_toolStripTextBox.Tag = "Ctrl+N";
+            Nextchapterreading_shortcut_toolStripTextBox.Text = "Ctrl+N";
             // 
             // toolStripSeparator6
             // 
             toolStripSeparator6.Name = "toolStripSeparator6";
-            toolStripSeparator6.Size = new Size(177, 6);
+            toolStripSeparator6.Size = new Size(145, 6);
             // 
             // 重置默认ToolStripMenuItem
             // 
             重置默认ToolStripMenuItem.Name = "重置默认ToolStripMenuItem";
-            重置默认ToolStripMenuItem.Size = new Size(180, 22);
+            重置默认ToolStripMenuItem.Size = new Size(148, 22);
             重置默认ToolStripMenuItem.Text = "重置默认";
             重置默认ToolStripMenuItem.Click += 重置默认ToolStripMenuItem_Click;
             // 
@@ -475,6 +475,7 @@
             Save_toolStripButton.Name = "Save_toolStripButton";
             Save_toolStripButton.Size = new Size(23, 22);
             Save_toolStripButton.Text = "保存";
+            Save_toolStripButton.ToolTipText = "保存(Ctrl+Alt+S)";
             Save_toolStripButton.Click += Save_toolStripButton_Click;
             // 
             // Save_toolStripComboBox
@@ -600,6 +601,7 @@
             Icon = (Icon)resources.GetObject("$this.Icon");
             MinimumSize = new Size(820, 510);
             Name = "ReadTXT";
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "ReadTXT";
             Load += ReadTXT_Load;
             groupBox1.ResumeLayout(false);
