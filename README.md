@@ -36,8 +36,8 @@
 ## 三、使用方法
 
 ### 3.1 界面
-![项目界面](StartView.png)
-![迷你窗口界面](MiniView.png)
+![项目界面](image/StartView.png)
+![迷你窗口界面](image/MiniView.png)
 ### 3.2 设置
 
 ### 3.2.1 章节规则-通过正则表达匹配
