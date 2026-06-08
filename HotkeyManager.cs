@@ -5,7 +5,7 @@ namespace ReadTXT
     public class HotkeyManager
     {
         private readonly ReadTXT mainForm;
-        private PatternItem config;
+        private readonly PatternItem config;
         private readonly Dictionary<string, Action> actionMap;
         private DateTime lastExecutionTime = DateTime.MinValue;
         private const int HOTKEY_COOLDOWN_MS = 300;
@@ -28,9 +28,7 @@ namespace ReadTXT
             };
 
             // 确保热键字典不为空
-            if (config.Hotkeys == null)
-            {
-                config.Hotkeys = new Dictionary<string, string>
+            config.Hotkeys ??= new Dictionary<string, string>
                 {
                     { "ToggleMode", "Ctrl+Alt+M" },
                     { "MinimizeOrClose", "Ctrl+Alt+X" },
@@ -40,7 +38,6 @@ namespace ReadTXT
                     { "NextChapter", "Ctrl+N" },
                     { "SaveDocument", "Ctrl+Alt+S" }
                 };
-            }
         }
 
         public bool ProcessHotkey(string hotkeyString)
@@ -74,7 +71,7 @@ namespace ReadTXT
 
         public Dictionary<string, string> GetCurrentHotkeys()
         {
-            return config.Hotkeys ?? new Dictionary<string, string>();
+            return config.Hotkeys ?? [];
         }
 
         public bool SetHotkey(string actionName, string hotkeyString)
@@ -82,8 +79,7 @@ namespace ReadTXT
             if (!actionMap.ContainsKey(actionName))
                 return false;
 
-            if (config.Hotkeys == null)
-                config.Hotkeys = new Dictionary<string, string>();
+            config.Hotkeys ??= [];
 
             config.Hotkeys[actionName] = hotkeyString;
             return true;

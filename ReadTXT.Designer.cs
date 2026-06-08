@@ -545,7 +545,7 @@
             notifyIcon1.Icon = (Icon)resources.GetObject("notifyIcon1.Icon");
             notifyIcon1.Text = "ReadTXT";
             notifyIcon1.Visible = true;
-            notifyIcon1.MouseDoubleClick += notifyIcon1_MouseDoubleClick;
+            notifyIcon1.MouseDoubleClick += NotifyIcon1_MouseDoubleClick;
             // 
             // contextMenuStrip1
             // 

@@ -32,7 +32,7 @@ namespace ReadTXT
         {
             if (primaryKey.HasValue)
             {
-                List<string> parts = new List<string>();
+                List<string> parts = [];
 
                 if (ctrlPressed) parts.Add("Ctrl");
                 if (altPressed) parts.Add("Alt");

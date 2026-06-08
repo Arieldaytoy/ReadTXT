@@ -192,15 +192,12 @@ namespace ReadTXT
         private void InitializeHotkeys()
         {
             // 确保patternConfig已加载
-            if (patternConfig == null)
+            // 如果配置为空，创建默认配置
+            patternConfig ??= new PatternItem
             {
-                // 如果配置为空，创建默认配置
-                patternConfig = new PatternItem
-                {
-                    BlackColor = new BlackColor { R = 255, G = 255, B = 255, A = 255 },
-                    Hotkeys = new Dictionary<string, string>(DefaultHotkeys)
-                };
-            }
+                BlackColor = new BlackColor { R = 255, G = 255, B = 255, A = 255 },
+                Hotkeys = new Dictionary<string, string>(DefaultHotkeys)
+            };
 
             // 初始化热键管理器
             hotkeyManager = new HotkeyManager(this, patternConfig);
@@ -352,13 +349,10 @@ namespace ReadTXT
         private void Set_button_Click(object sender, EventArgs e)
         {
             // 如果patternConfig为空，创建新的
-            if (patternConfig == null)
-            {
-                patternConfig = new PatternItem
+            patternConfig ??= new PatternItem
                 {
                     BlackColor = new BlackColor { R = 255, G = 255, B = 255, A = 255 }
                 };
-            }
 
             // 更新配置
             patternConfig.TXTPath_textBoxPattern = this.TXTPath_textBox.Text;
@@ -376,10 +370,7 @@ namespace ReadTXT
             patternConfig.BlackColor.A = this.ChapterContent_richTextBox.BackColor.A;
 
             // 确保HotkeysForJson字典存在
-            if (patternConfig.HotkeysForJson == null)
-            {
-                patternConfig.HotkeysForJson = new Dictionary<string, string>();
-            }
+            patternConfig.HotkeysForJson ??= [];
 
             // 保存热键配置（从文本框获取当前设置）
             patternConfig.HotkeysForJson["ToggleMode"] = Winswitch_shortcut_toolStripTextBox.Text;
@@ -392,7 +383,7 @@ namespace ReadTXT
             // 保存到文件
             var patterns = new PatternsContainer
             {
-                Patterns = new[] { patternConfig }
+                Patterns = [patternConfig]
             };
 
             string runningDirectory = AppDomain.CurrentDomain.BaseDirectory;
@@ -456,7 +447,7 @@ namespace ReadTXT
         #endregion
 
         #region 托盘双击事件
-        private void notifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
+        private void NotifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             RestoreFromTray();
         }
@@ -1217,7 +1208,7 @@ namespace ReadTXT
         // 获取当前热键配置
         public Dictionary<string, string> GetHotkeys()
         {
-            return hotkeyManager?.GetCurrentHotkeys() ?? new Dictionary<string, string>();
+            return hotkeyManager?.GetCurrentHotkeys() ?? [];
         }
 
         // 重新加载热键配置
@@ -1719,7 +1710,7 @@ namespace ReadTXT
                 string lineText = ChapterContent_richTextBox.Lines[currentLineIndex];
                 if (lineText.Length > 50)
                 {
-                    return lineText.Substring(0, 47) + "...";
+                    return string.Concat(lineText.AsSpan(0, 47), "...");
                 }
                 return lineText;
             }
@@ -1832,11 +1823,11 @@ namespace ReadTXT
             if (DefaultHotkeys.TryGetValue("NextChapter", out string nextChapterHotkey))
                 Nextchapterreading_shortcut_toolStripTextBox.Text = nextChapterHotkey;
 
-            if (DefaultHotkeys.TryGetValue("SaveDocument", out string saveDocumentHotkey))
-            {
-                // 如果有保存文档的热键文本框
-                // Save_shortcut_toolStripTextBox.Text = saveDocumentHotkey;
-            }
+            //if (DefaultHotkeys.TryGetValue("SaveDocument", out string saveDocumentHotkey))
+            //{
+            //    // 如果有保存文档的热键文本框
+            //    // Save_shortcut_toolStripTextBox.Text = saveDocumentHotkey;
+            //}
 
             // 2. 更新热键管理器
             if (hotkeyManager != null)
@@ -1850,10 +1841,7 @@ namespace ReadTXT
             // 3. 更新patternConfig
             if (patternConfig != null)
             {
-                if (patternConfig.HotkeysForJson == null)
-                {
-                    patternConfig.HotkeysForJson = new Dictionary<string, string>();
-                }
+                patternConfig.HotkeysForJson ??= [];
 
                 foreach (var hotkey in DefaultHotkeys)
                 {
@@ -1871,18 +1859,16 @@ namespace ReadTXT
                 string currentHotkey = targetTextBox.Text;
 
                 // 显示热键输入对话框
-                using (HotkeyInputForm form = new HotkeyInputForm(currentHotkey))
+                using HotkeyInputForm form = new(currentHotkey);
+                if (form.ShowDialog() == DialogResult.OK)
                 {
-                    if (form.ShowDialog() == DialogResult.OK)
-                    {
-                        string newHotkey = form.HotkeyString;
+                    string newHotkey = form.HotkeyString;
 
-                        // 更新文本框
-                        targetTextBox.Text = newHotkey;
+                    // 更新文本框
+                    targetTextBox.Text = newHotkey;
 
-                        // 更新热键管理器和配置
-                        UpdateHotkeyConfiguration(actionName, newHotkey, actionDescription);
-                    }
+                    // 更新热键管理器和配置
+                    UpdateHotkeyConfiguration(actionName, newHotkey, actionDescription);
                 }
             }
             catch (Exception ex)
@@ -1904,8 +1890,7 @@ namespace ReadTXT
                     // 更新patternConfig
                     if (patternConfig != null)
                     {
-                        if (patternConfig.HotkeysForJson == null)
-                            patternConfig.HotkeysForJson = new Dictionary<string, string>();
+                        patternConfig.HotkeysForJson ??= [];
 
                         patternConfig.HotkeysForJson[actionName] = hotkeyString;
                     }
