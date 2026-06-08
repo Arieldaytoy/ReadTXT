@@ -1,6 +1,4 @@
-﻿using static ReadTXT.ReadTXT;
-
-namespace ReadTXT
+﻿namespace ReadTXT
 {
     public class HotkeyManager
     {
@@ -85,91 +83,15 @@ namespace ReadTXT
             return true;
         }
 
-        // 以下为具体的操作方法（保持不变）
+        // 以下为具体的操作方法
         private void ToggleMainMiniMode()
         {
-            if (mainForm.isSwitchingMode) return;
-            mainForm.isSwitchingMode = true;
-
-            try
-            {
-                bool isMainActive = mainForm.IsMainWindowActive();
-                bool isMiniActive = mainForm.IsMiniModeActive();
-
-                if (isMiniActive && !isMainActive)
-                {
-                    mainForm.SwitchToMainFromMini();
-                }
-                else if (!isMiniActive && isMainActive)
-                {
-                    mainForm.SwitchToMiniFromMain();
-                }
-                else
-                {
-                    mainForm.FixWindowStates();
-                }
-            }
-            finally
-            {
-                Task.Delay(800).ContinueWith(_ =>
-                {
-                    mainForm.BeginInvoke(new Action(() => { mainForm.isSwitchingMode = false; }));
-                });
-            }
+            mainForm.ToggleMainMiniMode();
         }
 
         private void HandleMinimizeOrClose()
         {
-            bool isMainActive = mainForm.IsMainWindowActive();
-            bool isMiniActive = false;
-
-            try
-            {
-                isMiniActive = mainForm.miniModeForm != null &&
-                              !mainForm.miniModeForm.IsDisposed &&
-                              mainForm.miniModeForm.Visible;
-            }
-            catch (ObjectDisposedException)
-            {
-                mainForm.miniModeForm = null;
-                isMiniActive = false;
-            }
-
-            if (isMiniActive)
-            {
-                mainForm.BeginInvoke(new Action(() =>
-                {
-                    try
-                    {
-                        if (mainForm.miniModeForm != null && !mainForm.miniModeForm.IsDisposed)
-                        {
-                            if (mainForm.miniModeForm is MiniModeForm miniForm)
-                            {
-                                miniForm.StopTimer();
-                                miniForm.AllowClose();
-                            }
-
-                            mainForm.miniModeForm.FormClosing -= mainForm.MiniModeForm_FormClosing;
-                            mainForm.miniModeForm.FormClosed -= mainForm.MiniModeForm_FormClosed;
-
-                            mainForm.miniModeForm.Close();
-                            mainForm.miniModeForm.Dispose();
-                            mainForm.miniModeForm = null;
-
-                            mainForm.LogStatus("迷你模式窗口已安全关闭");
-                        }
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        mainForm.miniModeForm = null;
-                        mainForm.LogStatus("迷你模式窗口已释放");
-                    }
-                }));
-            }
-            else if (isMainActive)
-            {
-                mainForm.MinimizeToTray();
-            }
+            mainForm.HandleMinimizeOrClose();
         }
 
         private void ToggleMiniModeTopMost()
@@ -179,18 +101,12 @@ namespace ReadTXT
 
         private void StartReading()
         {
-            if (!mainForm.GetSpeakingStatus())
-            {
-                mainForm.StartReadingFromMini();
-            }
+            mainForm.StartReadingFromHotkey();
         }
 
         private void StopReading()
         {
-            if (mainForm.GetSpeakingStatus())
-            {
-                mainForm.StopReadingFromMini();
-            }
+            mainForm.StopReadingFromHotkey();
         }
 
         private void NextChapter()
