@@ -53,36 +53,39 @@
 ### 3.2.3 保存按钮
 点击可以保存当前的设置，会自动生成一个名为“mySet.json”的文件。
 初始内容如下：每项的说明看//后的说明~~
-{
-  "patterns": [
-    {
-      "txtPathTextBoxPattern": "",//文档路径
-      "ruleTextBoxPattern": "\u7B2C([\u4E00\u4E8C\u4E24\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u96F6\u767E\u5343\u4E07\\d]\u002B)\u7AE0|\u756A\u5916 ([\u4E00\u4E8C\u4E24\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u96F6\u767E\u5343\u4E07\\d]\u002B)",//章节规则
-      "speedToolStripComboBoxPattern": "5",//语速
-      "readModeToolStripComboBoxPattern": "\u6574\u884C",//朗读模式
-      "currentChapterToolStripStatusLabelPattern": "",//当前章节
-      "currentLineToolStripStatusLabelPattern": "0",//当前行
-      "fontName": "Microsoft YaHei UI",//字体名称
-      "fontStyle": 0,
-      "fontSize": 11.25,//字号大小
-      "blackColor": {
-        "r": 255,
-        "g": 255,
-        "b": 255,
-        "a": 255
-      },//背景色
-      "hotkeysForJson": {
-        "ToggleMode": "Ctrl\u002BAlt\u002BM",
-        "MinimizeOrClose": "Ctrl\u002BAlt\u002BX",
-        "ToggleTopMost": "Ctrl\u002BAlt\u002BT",
-        "StartReading": "Ctrl\u002BAlt\u002BK",
-        "StopReading": "Ctrl\u002BAlt\u002BZ",
-        "NextChapter": "Ctrl\u002BAlt\u002BN",
-        "SaveDocument": "Ctrl\u002BAlt\u002BS"
-      }//快捷键
-    }
-  ]
-}
+```json
+  {
+    "patterns": [
+      {
+        "txtPathTextBoxPattern": "",//文档路径
+        "ruleTextBoxPattern": "\u7B2C([\u4E00\u4E8C\u4E24\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u96F6\u767E\u5343\u4E07\\d]\u002B)\u7AE0|\u756A\u5916 ([\u4E00\u4E8C\u4E24\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u96F6\u767E\u5343\u4E07\\d]\u002B)",//章节规则
+        "speedToolStripComboBoxPattern": "5",//语速
+        "readModeToolStripComboBoxPattern": "\u6574\u884C",//朗读模式
+        "currentChapterToolStripStatusLabelPattern": "",//当前章节
+        "currentLineToolStripStatusLabelPattern": "0",//当前行
+        "fontName": "Microsoft YaHei UI",//字体名称
+        "fontStyle": 0,
+        "fontSize": 11.25,//字号大小
+        "blackColor": {
+          "r": 255,
+          "g": 255,
+          "b": 255,
+          "a": 255
+        },//背景色
+        "hotkeysForJson": {
+          "ToggleMode": "Ctrl\u002BAlt\u002BM",
+          "MinimizeOrClose": "Ctrl\u002BAlt\u002BX",
+          "ToggleTopMost": "Ctrl\u002BAlt\u002BT",
+          "StartReading": "Ctrl\u002BAlt\u002BK",
+          "StopReading": "Ctrl\u002BAlt\u002BZ",
+          "NextChapter": "Ctrl\u002BAlt\u002BN",
+          "SaveDocument": "Ctrl\u002BAlt\u002BS"
+        }//快捷键
+      }
+    ]
+  }
+```
+
 ### 3.2.4 载入设置
 如果没有保存的话是无法载入上次的设置的。也就是每次打开都是初始界面。这个大家按自己需要。
 
@@ -96,13 +99,15 @@
 包含可设置的内容有：字体，背景色，语音包，快捷键。
 
 #### 快捷键说明
-   窗口切换：Ctrl+Alt+M,
-   窗口最小化：Ctrl+Alt+X,
-   置顶迷你窗口：Ctrl+Alt+T,
-   开始朗读：Ctrl+K,
-   暂停朗读：Ctrl+Z,
-   下一章：Ctrl+N,
-   保存文档编辑：Ctrl+Alt+S
+#### 快捷键说明
+- 窗口切换：Ctrl+Alt+M
+- 窗口最小化：Ctrl+Alt+X
+- 置顶迷你窗口：Ctrl+Alt+T
+- 开始朗读：Ctrl+K
+- 暂停朗读：Ctrl+Z
+- 下一章：Ctrl+N
+- 保存文档编辑：Ctrl+Alt+S
+
 ### 3.2.8 语速
 支持-10~10之间的整数的调整。
 
@@ -132,9 +137,10 @@
 （包括但不限于因商誉损失、停工、计算机故障或故障引起的损害赔偿，或任何及所有其他商业损害或损失）由使用者负责。
 本项目仅用于对技术可行性的探索及研究，不接受任何商业（包括但不限于广告等）合作及捐赠。
 
-## 六、其他
-如果有其他需求或问题可以说明，但是不一定更新哈。毕竟能力有限。实在抱歉啦，哈哈哈哈哈
-版本：0.0.0.4
+## 六、版本：
+0.0.0.4
 
+## 七、其他
+如果有其他需求或问题可以说明，但是不一定更新哈。毕竟能力有限。实在抱歉啦，哈哈哈哈哈
 
 
